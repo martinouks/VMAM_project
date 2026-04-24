@@ -1,0 +1,556 @@
+// Projet VMAM 2025-2026 : Distribution de chaleur dans un four
+// Auteurs : Casals Diego
+
+verbosity = 0;
+real Tc  = 343.0;   // Temperature mur du haut (K)
+real Te  = 293.0;   // Temperature exterieure (K)
+real hc  = 1.0;     // Coefficient de transfert thermique
+real r0  = 0.05;    // Rayon des resistances (m)
+real Ts  = 400.0;   // Temperature desiree dans S (K)
+
+// Centres des 6 resistances : {-1, 0, 1} x {-0.75, 0.75}
+real cx1 = -1.0, cx2 = 0.0, cx3 = 1.0, cx4 = -1.0, cx5 = 0.0, cx6 = 1.0;
+real cy1 = -0.75, cy2 = -0.75, cy3 = -0.75, cy4 = 0.75, cy5 = 0.75, cy6 = 0.75;
+
+// CONSTRUCTION DU MAILLAGE
+int nO = 30, nC = 15, nSm = 20;
+
+border bBas(t=-1.5, 1.5)    { x=t;    y=-1;   label=1; }
+border bDroite(t=-1, 1)     { x=1.5;  y=t;    label=2; }
+border bHaut(t=1.5, -1.5)   { x=t;    y=1;    label=3; }
+border bGauche(t=1, -1)     { x=-1.5; y=t;    label=4; }
+
+border sBas(t=-0.75, 0.75)  { x=t;    y=-0.5; label=10; }
+border sDroite(t=-0.5, 0.5) { x=0.75; y=t;    label=10; }
+border sHaut(t=0.75, -0.75) { x=t;    y=0.5;  label=10; }
+border sGauche(t=0.5, -0.5) { x=-0.75;y=t;    label=10; }
+
+border Circ1(t=0, 2*pi) { x=cx1+r0*cos(t); y=cy1+r0*sin(t); label=21; }
+border Circ2(t=0, 2*pi) { x=cx2+r0*cos(t); y=cy2+r0*sin(t); label=22; }
+border Circ3(t=0, 2*pi) { x=cx3+r0*cos(t); y=cy3+r0*sin(t); label=23; }
+border Circ4(t=0, 2*pi) { x=cx4+r0*cos(t); y=cy4+r0*sin(t); label=24; }
+border Circ5(t=0, 2*pi) { x=cx5+r0*cos(t); y=cy5+r0*sin(t); label=25; }
+border Circ6(t=0, 2*pi) { x=cx6+r0*cos(t); y=cy6+r0*sin(t); label=26; }
+
+mesh Th = buildmesh(
+    bBas(3*nO) + bDroite(2*nO) + bHaut(3*nO) + bGauche(2*nO)
+    + sBas(nSm) + sDroite(nSm) + sHaut(nSm) + sGauche(nSm)
+    + Circ1(nC) + Circ2(nC) + Circ3(nC) + Circ4(nC) + Circ5(nC) + Circ6(nC)
+);
+
+cout << "=== MAILLAGE ===" << endl;
+cout << "Nombre de triangles : " << Th.nt << endl;
+cout << "Nombre de sommets   : " << Th.nv << endl;
+plot(Th, wait=true, ps="maillage.eps", cmm="Maillage du four");
+
+fespace Vh(Th, P1);
+Vh uh, vh;
+
+// Identification des regions
+int regS  = Th(0, 0).region;
+int regC1 = Th(cx1, cy1).region;
+int regC2 = Th(cx2, cy2).region;
+int regC3 = Th(cx3, cy3).region;
+int regC4 = Th(cx4, cy4).region;
+int regC5 = Th(cx5, cy5).region;
+int regC6 = Th(cx6, cy6).region;
+
+cout << "Region S  : " << regS << endl;
+cout << "Region C1 : " << regC1 << ", C2 : " << regC2 << ", C3 : " << regC3 << endl;
+cout << "Region C4 : " << regC4 << ", C5 : " << regC5 << ", C6 : " << regC6 << endl;
+
+// Coefficient de diffusion : k=1 dans S, k=10 ailleurs
+Vh kk;
+kk = 1.0 + 9.0*(region != regS);
+
+// Indicatrices (declarees au niveau global)
+Vh chiS;
+chiS = (region == regS);
+
+Vh chiCi1, chiCi2, chiCi3, chiCi4, chiCi5, chiCi6;
+chiCi1 = (region == regC1);
+chiCi2 = (region == regC2);
+chiCi3 = (region == regC3);
+chiCi4 = (region == regC4);
+chiCi5 = (region == regC5);
+chiCi6 = (region == regC6);
+
+//   PARTIE 1 : PROBLEME DIRECT STATIONNAIRE
+cout << "\n===== PARTIE 1 : PROBLEME DIRECT =====" << endl;
+
+real al1 = 1e4, al2 = 1e4, al3 = 1e4, al4 = 1e4, al5 = 1e4, al6 = 1e4;
+
+Vh fsource;
+fsource = al1*chiCi1 + al2*chiCi2 + al3*chiCi3
+        + al4*chiCi4 + al5*chiCi5 + al6*chiCi6;
+
+solve PbDirect(uh, vh) =
+    int2d(Th)(kk * (dx(uh)*dx(vh) + dy(uh)*dy(vh)))
+  + int1d(Th, 1)(hc * uh * vh)
+  - int2d(Th)(fsource * vh)
+  - int1d(Th, 1)(hc * Te * vh)
+  + on(3, uh = Tc);
+
+plot(uh, fill=true, wait=true, value=true, ps="part1_direct.eps",
+     cmm="Partie 1c : Temperature stationnaire");
+
+real aireS = int2d(Th)(chiS);
+real TmoyS = int2d(Th)(chiS * uh) / aireS;
+real ecartS = sqrt(int2d(Th)(chiS * (uh - TmoyS)^2) / aireS);
+cout << "T min = " << uh[].min << ", T max = " << uh[].max << endl;
+cout << "T moy dans S = " << TmoyS << ", ecart-type = " << ecartS << endl;
+
+//   PARTIE 1d : PROBLEME TRANSITOIRE
+cout << "\n===== PARTIE 1d : TRANSITOIRE =====" << endl;
+
+real rhoc = 1.0;
+real dt   = 0.02;
+int  Nt   = 300;
+
+Vh Told, Tnew;
+Told = Te;
+
+problem PbTransitoire(Tnew, vh) =
+    int2d(Th)(rhoc/dt * Tnew * vh + kk * (dx(Tnew)*dx(vh) + dy(Tnew)*dy(vh)))
+  + int1d(Th, 1)(hc * Tnew * vh)
+  - int2d(Th)((rhoc/dt * Told + fsource) * vh)
+  - int1d(Th, 1)(hc * Te * vh)
+  + on(3, Tnew = Tc);
+
+for (int n = 0; n < Nt; n++) {
+    PbTransitoire;
+    Told = Tnew;
+    if (n % 50 == 0 || n == Nt-1) {
+        real TmS = int2d(Th)(chiS * Tnew) / aireS;
+        cout << "  t=" << (n+1)*dt << ", T moy S=" << TmS << endl;
+        plot(Tnew, fill=true, value=true, wait=false,
+             cmm="Transitoire t=" + (n+1)*dt);
+    }
+}
+plot(Tnew, fill=true, value=true, wait=true, ps="part1d_final.eps",
+     cmm="Partie 1d : etat final");
+
+//   PARTIE 2 : OPTIMISATION
+cout << "\n===== PARTIE 2 : OPTIMISATION =====" << endl;
+
+// 2a) T(alpha,x) = T0(x) + sum alpha_i Ti(x)
+Vh T0, TT1, TT2, TT3, TT4, TT5, TT6;
+
+solve PbT0(T0, vh) =
+    int2d(Th)(kk*(dx(T0)*dx(vh)+dy(T0)*dy(vh)))
+  + int1d(Th,1)(hc*T0*vh)
+  - int1d(Th,1)(hc*Te*vh)
+  + on(3, T0=Tc);
+plot(T0, fill=true, value=true, wait=true, cmm="T0 sans source");
+
+solve PbTT1(TT1, vh) = int2d(Th)(kk*(dx(TT1)*dx(vh)+dy(TT1)*dy(vh)))
+  + int1d(Th,1)(hc*TT1*vh) - int2d(Th)(chiCi1*vh) + on(3, TT1=0);
+solve PbTT2(TT2, vh) = int2d(Th)(kk*(dx(TT2)*dx(vh)+dy(TT2)*dy(vh)))
+  + int1d(Th,1)(hc*TT2*vh) - int2d(Th)(chiCi2*vh) + on(3, TT2=0);
+solve PbTT3(TT3, vh) = int2d(Th)(kk*(dx(TT3)*dx(vh)+dy(TT3)*dy(vh)))
+  + int1d(Th,1)(hc*TT3*vh) - int2d(Th)(chiCi3*vh) + on(3, TT3=0);
+solve PbTT4(TT4, vh) = int2d(Th)(kk*(dx(TT4)*dx(vh)+dy(TT4)*dy(vh)))
+  + int1d(Th,1)(hc*TT4*vh) - int2d(Th)(chiCi4*vh) + on(3, TT4=0);
+solve PbTT5(TT5, vh) = int2d(Th)(kk*(dx(TT5)*dx(vh)+dy(TT5)*dy(vh)))
+  + int1d(Th,1)(hc*TT5*vh) - int2d(Th)(chiCi5*vh) + on(3, TT5=0);
+solve PbTT6(TT6, vh) = int2d(Th)(kk*(dx(TT6)*dx(vh)+dy(TT6)*dy(vh)))
+  + int1d(Th,1)(hc*TT6*vh) - int2d(Th)(chiCi6*vh) + on(3, TT6=0);
+
+cout << "T0, T1...T6 calcules." << endl;
+
+// 2b) Systeme M * alpha_opt = b
+// M_ij = int_S Ti Tj, b_j = int_S (Ts-T0) Tj
+real[int, int] Mmat(6, 6);
+real[int] bvec(6);
+
+Mmat(0,0) = int2d(Th)(chiS*TT1*TT1);
+Mmat(0,1) = int2d(Th)(chiS*TT1*TT2);
+Mmat(0,2) = int2d(Th)(chiS*TT1*TT3);
+Mmat(0,3) = int2d(Th)(chiS*TT1*TT4);
+Mmat(0,4) = int2d(Th)(chiS*TT1*TT5);
+Mmat(0,5) = int2d(Th)(chiS*TT1*TT6);
+bvec[0]   = int2d(Th)(chiS*(Ts-T0)*TT1);
+
+Mmat(1,0) = Mmat(0,1);
+Mmat(1,1) = int2d(Th)(chiS*TT2*TT2);
+Mmat(1,2) = int2d(Th)(chiS*TT2*TT3);
+Mmat(1,3) = int2d(Th)(chiS*TT2*TT4);
+Mmat(1,4) = int2d(Th)(chiS*TT2*TT5);
+Mmat(1,5) = int2d(Th)(chiS*TT2*TT6);
+bvec[1]   = int2d(Th)(chiS*(Ts-T0)*TT2);
+
+Mmat(2,0) = Mmat(0,2); Mmat(2,1) = Mmat(1,2);
+Mmat(2,2) = int2d(Th)(chiS*TT3*TT3);
+Mmat(2,3) = int2d(Th)(chiS*TT3*TT4);
+Mmat(2,4) = int2d(Th)(chiS*TT3*TT5);
+Mmat(2,5) = int2d(Th)(chiS*TT3*TT6);
+bvec[2]   = int2d(Th)(chiS*(Ts-T0)*TT3);
+
+Mmat(3,0) = Mmat(0,3); Mmat(3,1) = Mmat(1,3); Mmat(3,2) = Mmat(2,3);
+Mmat(3,3) = int2d(Th)(chiS*TT4*TT4);
+Mmat(3,4) = int2d(Th)(chiS*TT4*TT5);
+Mmat(3,5) = int2d(Th)(chiS*TT4*TT6);
+bvec[3]   = int2d(Th)(chiS*(Ts-T0)*TT4);
+
+Mmat(4,0) = Mmat(0,4); Mmat(4,1) = Mmat(1,4);
+Mmat(4,2) = Mmat(2,4); Mmat(4,3) = Mmat(3,4);
+Mmat(4,4) = int2d(Th)(chiS*TT5*TT5);
+Mmat(4,5) = int2d(Th)(chiS*TT5*TT6);
+bvec[4]   = int2d(Th)(chiS*(Ts-T0)*TT5);
+
+Mmat(5,0) = Mmat(0,5); Mmat(5,1) = Mmat(1,5);
+Mmat(5,2) = Mmat(2,5); Mmat(5,3) = Mmat(3,5); Mmat(5,4) = Mmat(4,5);
+Mmat(5,5) = int2d(Th)(chiS*TT6*TT6);
+bvec[5]   = int2d(Th)(chiS*(Ts-T0)*TT6);
+
+// Resolution par Gauss avec pivot partiel (6x6)
+real[int, int] Maug(6, 7);
+for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++)
+        Maug(i, j) = Mmat(i, j);
+    Maug(i, 6) = bvec[i];
+}
+for (int k = 0; k < 6; k++) {
+    int imax = k;
+    real vmax = abs(Maug(k, k));
+    for (int i = k+1; i < 6; i++) {
+        if (abs(Maug(i, k)) > vmax) { vmax = abs(Maug(i, k)); imax = i; }
+    }
+    if (imax != k) {
+        for (int j = k; j < 7; j++) {
+            real tmp = Maug(k, j); Maug(k, j) = Maug(imax, j); Maug(imax, j) = tmp;
+        }
+    }
+    for (int i = k+1; i < 6; i++) {
+        real fact = Maug(i, k) / Maug(k, k);
+        for (int j = k; j < 7; j++)
+            Maug(i, j) -= fact * Maug(k, j);
+    }
+}
+real[int] alphaOpt(6);
+for (int i = 5; i >= 0; i--) {
+    alphaOpt[i] = Maug(i, 6);
+    for (int j = i+1; j < 6; j++)
+        alphaOpt[i] -= Maug(i, j) * alphaOpt[j];
+    alphaOpt[i] /= Maug(i, i);
+}
+
+cout << "\n--- 2c) Coefficients optimaux (Ts=" << Ts << "K) ---" << endl;
+for (int i = 0; i < 6; i++)
+    cout << "  alpha*_" << i+1 << " = " << alphaOpt[i] << endl;
+
+// Verification par decomposition
+Vh Topt;
+Topt[] = T0[];
+Topt[] += alphaOpt[0]*TT1[]; Topt[] += alphaOpt[1]*TT2[];
+Topt[] += alphaOpt[2]*TT3[]; Topt[] += alphaOpt[3]*TT4[];
+Topt[] += alphaOpt[4]*TT5[]; Topt[] += alphaOpt[5]*TT6[];
+plot(Topt, fill=true, value=true, wait=true, ps="part2c_Topt.eps",
+     cmm="T optimal (decomposition)");
+
+// Verification par resolution directe
+Vh fsourceOpt;
+fsourceOpt = alphaOpt[0]*chiCi1 + alphaOpt[1]*chiCi2 + alphaOpt[2]*chiCi3
+           + alphaOpt[3]*chiCi4 + alphaOpt[4]*chiCi5 + alphaOpt[5]*chiCi6;
+
+Vh ToptDirect;
+solve PbVerif(ToptDirect, vh) =
+    int2d(Th)(kk*(dx(ToptDirect)*dx(vh)+dy(ToptDirect)*dy(vh)))
+  + int1d(Th,1)(hc*ToptDirect*vh) - int2d(Th)(fsourceOpt*vh)
+  - int1d(Th,1)(hc*Te*vh) + on(3, ToptDirect=Tc);
+plot(ToptDirect, fill=true, value=true, wait=true, ps="part2c_direct.eps",
+     cmm="T optimal (direct)");
+
+real TmoyOpt  = int2d(Th)(chiS*ToptDirect) / aireS;
+real ecartOpt = sqrt(int2d(Th)(chiS*(ToptDirect-Ts)^2) / aireS);
+real Jopt     = 0.5*int2d(Th)(chiS*(ToptDirect-Ts)^2);
+real errDec   = sqrt(int2d(Th)((Topt-ToptDirect)^2));
+
+cout << "T moy dans S = " << TmoyOpt << " (cible " << Ts << ")" << endl;
+cout << "Ecart-type   = " << ecartOpt << endl;
+cout << "J(alpha*)    = " << Jopt << endl;
+cout << "Err decomp   = " << errDec << endl;
+
+Vh ecart;
+ecart = ToptDirect - Ts;
+plot(ecart, fill=true, value=true, wait=true, ps="part2c_ecart.eps",
+     cmm="Ecart T_opt - Ts");
+
+//   PARTIE 2d : AMELIORATION (8 sources)
+cout << "\n===== PARTIE 2d : 8 SOURCES =====" << endl;
+
+real cx2d1=-1, cx2d2=-0.5, cx2d3=0.5, cx2d4=1;
+real cx2d5=-1, cx2d6=-0.5, cx2d7=0.5, cx2d8=1;
+real cy2d1=-0.75, cy2d2=-0.75, cy2d3=-0.75, cy2d4=-0.75;
+real cy2d5=0.75, cy2d6=0.75, cy2d7=0.75, cy2d8=0.75;
+
+border Cd1(t=0,2*pi){x=cx2d1+r0*cos(t); y=cy2d1+r0*sin(t); label=31;}
+border Cd2(t=0,2*pi){x=cx2d2+r0*cos(t); y=cy2d2+r0*sin(t); label=32;}
+border Cd3(t=0,2*pi){x=cx2d3+r0*cos(t); y=cy2d3+r0*sin(t); label=33;}
+border Cd4(t=0,2*pi){x=cx2d4+r0*cos(t); y=cy2d4+r0*sin(t); label=34;}
+border Cd5(t=0,2*pi){x=cx2d5+r0*cos(t); y=cy2d5+r0*sin(t); label=35;}
+border Cd6(t=0,2*pi){x=cx2d6+r0*cos(t); y=cy2d6+r0*sin(t); label=36;}
+border Cd7(t=0,2*pi){x=cx2d7+r0*cos(t); y=cy2d7+r0*sin(t); label=37;}
+border Cd8(t=0,2*pi){x=cx2d8+r0*cos(t); y=cy2d8+r0*sin(t); label=38;}
+
+mesh Th2 = buildmesh(
+    bBas(3*nO) + bDroite(2*nO) + bHaut(3*nO) + bGauche(2*nO)
+    + sBas(nSm) + sDroite(nSm) + sHaut(nSm) + sGauche(nSm)
+    + Cd1(nC)+Cd2(nC)+Cd3(nC)+Cd4(nC)+Cd5(nC)+Cd6(nC)+Cd7(nC)+Cd8(nC)
+);
+
+fespace Vh2(Th2, P1);
+Vh2 u2, v2;
+
+int regS2 = Th2(0,0).region;
+int regD1=Th2(cx2d1,cy2d1).region, regD2=Th2(cx2d2,cy2d2).region;
+int regD3=Th2(cx2d3,cy2d3).region, regD4=Th2(cx2d4,cy2d4).region;
+int regD5=Th2(cx2d5,cy2d5).region, regD6=Th2(cx2d6,cy2d6).region;
+int regD7=Th2(cx2d7,cy2d7).region, regD8=Th2(cx2d8,cy2d8).region;
+
+Vh2 kk2;    kk2 = 1.0 + 9.0*(region != regS2);
+Vh2 chiS2;  chiS2 = (region == regS2);
+real aireS2 = int2d(Th2)(chiS2);
+
+Vh2 chD1, chD2, chD3, chD4, chD5, chD6, chD7, chD8;
+chD1=(region==regD1); chD2=(region==regD2); chD3=(region==regD3); chD4=(region==regD4);
+chD5=(region==regD5); chD6=(region==regD6); chD7=(region==regD7); chD8=(region==regD8);
+
+Vh2 T02, TD1, TD2, TD3, TD4, TD5, TD6, TD7, TD8;
+
+solve PbT02(T02,v2) = int2d(Th2)(kk2*(dx(T02)*dx(v2)+dy(T02)*dy(v2)))
+  + int1d(Th2,1)(hc*T02*v2) - int1d(Th2,1)(hc*Te*v2) + on(3,T02=Tc);
+
+solve P1d(TD1,v2) = int2d(Th2)(kk2*(dx(TD1)*dx(v2)+dy(TD1)*dy(v2)))
+  + int1d(Th2,1)(hc*TD1*v2) - int2d(Th2)(chD1*v2) + on(3,TD1=0);
+solve P2d(TD2,v2) = int2d(Th2)(kk2*(dx(TD2)*dx(v2)+dy(TD2)*dy(v2)))
+  + int1d(Th2,1)(hc*TD2*v2) - int2d(Th2)(chD2*v2) + on(3,TD2=0);
+solve P3d(TD3,v2) = int2d(Th2)(kk2*(dx(TD3)*dx(v2)+dy(TD3)*dy(v2)))
+  + int1d(Th2,1)(hc*TD3*v2) - int2d(Th2)(chD3*v2) + on(3,TD3=0);
+solve P4d(TD4,v2) = int2d(Th2)(kk2*(dx(TD4)*dx(v2)+dy(TD4)*dy(v2)))
+  + int1d(Th2,1)(hc*TD4*v2) - int2d(Th2)(chD4*v2) + on(3,TD4=0);
+solve P5d(TD5,v2) = int2d(Th2)(kk2*(dx(TD5)*dx(v2)+dy(TD5)*dy(v2)))
+  + int1d(Th2,1)(hc*TD5*v2) - int2d(Th2)(chD5*v2) + on(3,TD5=0);
+solve P6d(TD6,v2) = int2d(Th2)(kk2*(dx(TD6)*dx(v2)+dy(TD6)*dy(v2)))
+  + int1d(Th2,1)(hc*TD6*v2) - int2d(Th2)(chD6*v2) + on(3,TD6=0);
+solve P7d(TD7,v2) = int2d(Th2)(kk2*(dx(TD7)*dx(v2)+dy(TD7)*dy(v2)))
+  + int1d(Th2,1)(hc*TD7*v2) - int2d(Th2)(chD7*v2) + on(3,TD7=0);
+solve P8d(TD8,v2) = int2d(Th2)(kk2*(dx(TD8)*dx(v2)+dy(TD8)*dy(v2)))
+  + int1d(Th2,1)(hc*TD8*v2) - int2d(Th2)(chD8*v2) + on(3,TD8=0);
+
+// Systeme 8x8
+real[int,int] M2(8,8);
+real[int] b2(8);
+
+M2(0,0)=int2d(Th2)(chiS2*TD1*TD1); M2(0,1)=int2d(Th2)(chiS2*TD1*TD2);
+M2(0,2)=int2d(Th2)(chiS2*TD1*TD3); M2(0,3)=int2d(Th2)(chiS2*TD1*TD4);
+M2(0,4)=int2d(Th2)(chiS2*TD1*TD5); M2(0,5)=int2d(Th2)(chiS2*TD1*TD6);
+M2(0,6)=int2d(Th2)(chiS2*TD1*TD7); M2(0,7)=int2d(Th2)(chiS2*TD1*TD8);
+b2[0]=int2d(Th2)(chiS2*(Ts-T02)*TD1);
+
+M2(1,1)=int2d(Th2)(chiS2*TD2*TD2); M2(1,2)=int2d(Th2)(chiS2*TD2*TD3);
+M2(1,3)=int2d(Th2)(chiS2*TD2*TD4); M2(1,4)=int2d(Th2)(chiS2*TD2*TD5);
+M2(1,5)=int2d(Th2)(chiS2*TD2*TD6); M2(1,6)=int2d(Th2)(chiS2*TD2*TD7);
+M2(1,7)=int2d(Th2)(chiS2*TD2*TD8);
+b2[1]=int2d(Th2)(chiS2*(Ts-T02)*TD2);
+
+M2(2,2)=int2d(Th2)(chiS2*TD3*TD3); M2(2,3)=int2d(Th2)(chiS2*TD3*TD4);
+M2(2,4)=int2d(Th2)(chiS2*TD3*TD5); M2(2,5)=int2d(Th2)(chiS2*TD3*TD6);
+M2(2,6)=int2d(Th2)(chiS2*TD3*TD7); M2(2,7)=int2d(Th2)(chiS2*TD3*TD8);
+b2[2]=int2d(Th2)(chiS2*(Ts-T02)*TD3);
+
+M2(3,3)=int2d(Th2)(chiS2*TD4*TD4); M2(3,4)=int2d(Th2)(chiS2*TD4*TD5);
+M2(3,5)=int2d(Th2)(chiS2*TD4*TD6); M2(3,6)=int2d(Th2)(chiS2*TD4*TD7);
+M2(3,7)=int2d(Th2)(chiS2*TD4*TD8);
+b2[3]=int2d(Th2)(chiS2*(Ts-T02)*TD4);
+
+M2(4,4)=int2d(Th2)(chiS2*TD5*TD5); M2(4,5)=int2d(Th2)(chiS2*TD5*TD6);
+M2(4,6)=int2d(Th2)(chiS2*TD5*TD7); M2(4,7)=int2d(Th2)(chiS2*TD5*TD8);
+b2[4]=int2d(Th2)(chiS2*(Ts-T02)*TD5);
+
+M2(5,5)=int2d(Th2)(chiS2*TD6*TD6); M2(5,6)=int2d(Th2)(chiS2*TD6*TD7);
+M2(5,7)=int2d(Th2)(chiS2*TD6*TD8);
+b2[5]=int2d(Th2)(chiS2*(Ts-T02)*TD6);
+
+M2(6,6)=int2d(Th2)(chiS2*TD7*TD7); M2(6,7)=int2d(Th2)(chiS2*TD7*TD8);
+b2[6]=int2d(Th2)(chiS2*(Ts-T02)*TD7);
+
+M2(7,7)=int2d(Th2)(chiS2*TD8*TD8);
+b2[7]=int2d(Th2)(chiS2*(Ts-T02)*TD8);
+
+// Symetrie
+for (int i = 0; i < 8; i++)
+    for (int j = 0; j < i; j++)
+        M2(i,j) = M2(j,i);
+
+// Gauss 8x8
+real[int,int] Maug2(8,9);
+for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) Maug2(i,j) = M2(i,j);
+    Maug2(i,8) = b2[i];
+}
+for (int k = 0; k < 8; k++) {
+    int imax = k; real vmax = abs(Maug2(k,k));
+    for (int i = k+1; i < 8; i++)
+        if (abs(Maug2(i,k)) > vmax) { vmax = abs(Maug2(i,k)); imax = i; }
+    if (imax != k)
+        for (int j = k; j < 9; j++) {
+            real tmp = Maug2(k,j); Maug2(k,j) = Maug2(imax,j); Maug2(imax,j) = tmp;
+        }
+    for (int i = k+1; i < 8; i++) {
+        real fact = Maug2(i,k) / Maug2(k,k);
+        for (int j = k; j < 9; j++) Maug2(i,j) -= fact * Maug2(k,j);
+    }
+}
+real[int] alphaOpt2(8);
+for (int i = 7; i >= 0; i--) {
+    alphaOpt2[i] = Maug2(i,8);
+    for (int j = i+1; j < 8; j++) alphaOpt2[i] -= Maug2(i,j)*alphaOpt2[j];
+    alphaOpt2[i] /= Maug2(i,i);
+}
+
+cout << "--- Coefficients optimaux (8 sources) ---" << endl;
+for (int i = 0; i < 8; i++)
+    cout << "  alpha*_" << i+1 << " = " << alphaOpt2[i] << endl;
+
+Vh2 Topt2;
+Topt2[] = T02[];
+Topt2[] += alphaOpt2[0]*TD1[]; Topt2[] += alphaOpt2[1]*TD2[];
+Topt2[] += alphaOpt2[2]*TD3[]; Topt2[] += alphaOpt2[3]*TD4[];
+Topt2[] += alphaOpt2[4]*TD5[]; Topt2[] += alphaOpt2[5]*TD6[];
+Topt2[] += alphaOpt2[6]*TD7[]; Topt2[] += alphaOpt2[7]*TD8[];
+
+plot(Topt2, fill=true, value=true, wait=true, ps="part2d_8sources.eps",
+     cmm="Partie 2d : T optimal 8 sources");
+
+real ecartOpt2 = sqrt(int2d(Th2)(chiS2*(Topt2-Ts)^2) / aireS2);
+real Jopt2     = 0.5*int2d(Th2)(chiS2*(Topt2-Ts)^2);
+
+cout << "\n--- Comparaison ---" << endl;
+cout << "6 sources : J=" << Jopt << ", ecart=" << ecartOpt << endl;
+cout << "8 sources : J=" << Jopt2 << ", ecart=" << ecartOpt2 << endl;
+
+//   PARTIE 3 : PROBLEME INVERSE
+cout << "\n===== PARTIE 3 : PROBLEME INVERSE =====" << endl;
+
+real alphaTrue = 5.0e4;
+real xcTrue = -0.5;
+real ycTrue = 0.3;
+real sigma = r0;
+
+Vh gsourceTrue;
+gsourceTrue = alphaTrue * exp(-((x-xcTrue)^2 + (y-ycTrue)^2)/(2.0*sigma*sigma));
+
+Vh Tmeas;
+solve PbMeas(Tmeas, vh) =
+    int2d(Th)(kk*(dx(Tmeas)*dx(vh)+dy(Tmeas)*dy(vh)))
+  + int1d(Th,1)(hc*Tmeas*vh) - int2d(Th)(gsourceTrue*vh)
+  - int1d(Th,1)(hc*Te*vh) + on(3, Tmeas=Tc);
+plot(Tmeas, fill=true, value=true, wait=true, ps="part3_Tmeas.eps",
+     cmm="T mesure (source vraie)");
+
+cout << "Source vraie : alpha=" << alphaTrue
+     << ", pos=(" << xcTrue << "," << ycTrue << ")" << endl;
+
+// Recherche sur grille
+int Ngx = 15, Ngy = 12;
+real xmin = -1.3, xmax = 1.3;
+real ymin2 = -0.8, ymax2 = 0.8;
+real dxg = (xmax - xmin) / (Ngx - 1.0);
+real dyg = (ymax2 - ymin2) / (Ngy - 1.0);
+
+real[int,int] Jgrid(Ngx, Ngy);
+real[int,int] alphaGrid(Ngx, Ngy);
+real Jmin = 1e30;
+int ixmin = 0, iymin = 0;
+
+// Declarer Vh HORS de la boucle
+Vh gsrc, Tsrc, Tcandidat;
+real xcloop, ycloop, num, den, alphaC, Jval;
+
+// Utiliser problem (compile 1 fois, re-evalue a chaque appel)
+problem PbSrc(Tsrc, vh) =
+    int2d(Th)(kk*(dx(Tsrc)*dx(vh)+dy(Tsrc)*dy(vh)))
+  + int1d(Th,1)(hc*Tsrc*vh) - int2d(Th)(gsrc*vh)
+  + on(3, Tsrc=0);
+
+cout << "Recherche sur grille " << Ngx << "x" << Ngy << " ..." << endl;
+
+for (int ix = 0; ix < Ngx; ix++) {
+    xcloop = xmin + ix * dxg;
+    for (int iy = 0; iy < Ngy; iy++) {
+        ycloop = ymin2 + iy * dyg;
+
+        gsrc = exp(-((x-xcloop)^2 + (y-ycloop)^2) / (2.0*sigma*sigma));
+        PbSrc;
+
+        num = int1d(Th,2)((Tmeas-T0)*Tsrc) + int1d(Th,4)((Tmeas-T0)*Tsrc);
+        den = int1d(Th,2)(Tsrc*Tsrc) + int1d(Th,4)(Tsrc*Tsrc);
+
+        alphaC = 0;
+        if (abs(den) > 1e-30)
+            alphaC = num / den;
+
+        Tcandidat[] = T0[];
+        Tcandidat[] += alphaC * Tsrc[];
+
+        Jval = 0.5*int1d(Th,2)((Tcandidat-Tmeas)^2)
+             + 0.5*int1d(Th,4)((Tcandidat-Tmeas)^2);
+
+        Jgrid(ix, iy) = Jval;
+        alphaGrid(ix, iy) = alphaC;
+
+        if (Jval < Jmin) { Jmin = Jval; ixmin = ix; iymin = iy; }
+    }
+    if (ix % 5 == 0)
+        cout << "  Progression : " << ix+1 << "/" << Ngx << endl;
+}
+
+real xcFound = xmin + ixmin * dxg;
+real ycFound = ymin2 + iymin * dyg;
+real alphaFound = alphaGrid(ixmin, iymin);
+
+cout << "\n--- Resultat probleme inverse ---" << endl;
+cout << "Position trouvee : (" << xcFound << ", " << ycFound << ")" << endl;
+cout << "Position vraie   : (" << xcTrue << ", " << ycTrue << ")" << endl;
+cout << "Erreur position  : " << sqrt((xcFound-xcTrue)^2+(ycFound-ycTrue)^2) << " m" << endl;
+cout << "Intensite trouvee : " << alphaFound << endl;
+cout << "Intensite vraie   : " << alphaTrue << endl;
+cout << "Erreur intensite  : " << abs(alphaFound-alphaTrue)/alphaTrue*100.0 << " %" << endl;
+cout << "J minimum         : " << Jmin << endl;
+
+// Sauvegarde carte de cout
+{
+    ofstream fout("cost_grid.dat");
+    for (int ix = 0; ix < Ngx; ix++) {
+        real xc = xmin + ix*dxg;
+        for (int iy = 0; iy < Ngy; iy++) {
+            real yc = ymin2 + iy*dyg;
+            fout << xc << " " << yc << " " << log10(Jgrid(ix,iy)+1e-30) << endl;
+        }
+        fout << endl;
+    }
+    cout << "Carte de cout dans cost_grid.dat" << endl;
+    cout << "gnuplot : set pm3d; splot 'cost_grid.dat' with pm3d" << endl;
+}
+
+// Verification
+Vh gsrcFound;
+gsrcFound = alphaFound*exp(-((x-xcFound)^2+(y-ycFound)^2)/(2.0*sigma*sigma));
+
+Vh TrecFound;
+solve PbRecFound(TrecFound, vh) =
+    int2d(Th)(kk*(dx(TrecFound)*dx(vh)+dy(TrecFound)*dy(vh)))
+  + int1d(Th,1)(hc*TrecFound*vh) - int2d(Th)(gsrcFound*vh)
+  - int1d(Th,1)(hc*Te*vh) + on(3, TrecFound=Tc);
+plot(TrecFound, fill=true, value=true, wait=true, ps="part3_reconstruit.eps",
+     cmm="T reconstruit");
+
+Vh errInv;
+errInv = Tmeas - TrecFound;
+cout << "Erreur L2 globale  : " << sqrt(int2d(Th)(errInv^2)) << endl;
+cout << "Erreur L2 bords    : " << sqrt(int1d(Th,2)(errInv^2)+int1d(Th,4)(errInv^2)) << endl;
+plot(errInv, fill=true, value=true, wait=true, ps="part3_erreur.eps",
+     cmm="Erreur T_mesure - T_reconstruit");
+
+cout << "\n=== PROJET TERMINE ===" << endl;
