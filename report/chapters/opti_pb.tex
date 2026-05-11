@@ -3,32 +3,32 @@
 \subsection{Linear decomposition of the solution}
 
 By linearity of equation~\eqref{eq:VF}, we decompose $f = \sum_{i=1}^6 \alpha_i \mathbf{1}_{C_i}$ and write:
-\[
+\begin{equation}
 T(\alpha, x) = T_0(x) + \sum_{i=1}^6 \alpha_i\,T_i(x),
-\]
-where $T_0$ is the solution of the problem \emph{without source} ($f=0$) with the same boundary conditions (Dirichlet and Robin), and for $i=1,\ldots,6$, $T_i$ is the solution of the homogeneous Dirichlet temperature problem ($T_i|_{\Gamma_{\text{haut}}}=0$) with the right-hand side $f = \mathbf{1}_{C_i}$:
-\[
+\end{equation}
+where $T_0$ is the solution of the problem \emph{without source} ($f=0$) with the same boundary conditions (Dirichlet and Robin), and for $i=1,\ldots,6$, $T_i$ is the solution of the homogeneous Dirichlet temperature problem ($T_i|_{\Gamma_{\text{top}}}=0$) with the right-hand side $f = \mathbf{1}_{C_i}$:
+\begin{equation}
 -\mathrm{div}(k\nabla T_i) = \mathbf{1}_{C_i} \quad \text{in } \Omega, \quad
-T_i|_{\Gamma_{\text{haut}}} = 0, \quad
-\partial_n T_i + h T_i = 0 \text{ on } \Gamma_{\text{bas}}, \quad
-\partial_n T_i = 0 \text{ on } \Gamma_{\text{lat}}.
-\]
+T_i|_{\Gamma_{\text{top}}} = 0, \quad
+\partial_n T_i + h T_i = 0 \text{ on } \Gamma_{\text{bottom}}, \quad
+\partial_n T_i = 0 \text{ on } \Gamma_{\text{side}}.
+\end{equation}
 These 7 problems are independent of the coefficients $(\alpha_i)$ and only need to be solved once.
 
 \subsection{Reduction to a linear system}
 
 We seek $\alpha^* = (\alpha_i^*)_{i=1}^6$ minimizing the functional:
-\[
+\begin{equation}
 J(\alpha) = \frac{1}{2}\int_S |T(\alpha,x) - T_s|^2\dd x.
-\]
+\end{equation}
 By substituting the decomposition, $J$ becomes a convex quadratic function in $\alpha$:
-\[
+\begin{equation}
 J(\alpha) = \frac{1}{2}\int_S \left|T_0 + \sum_{i=1}^6 \alpha_i T_i - T_s\right|^2\dd x.
-\]
+\end{equation}
 The optimality conditions $\partial J/\partial \alpha_j = 0$ (for $j=1,\ldots,6$) give:
-\[
+\begin{equation}
 \int_S \left(T_0 + \sum_{i=1}^6 \alpha_i T_i - T_s\right)T_j\dd x = 0, \quad j = 1,\ldots,6,
-\]
+\end{equation}
 which yields the $6\times 6$ linear system:
 \begin{equation}\label{eq:syst_opt}
 \boxed{M\,\alpha^* = b, \qquad M_{ij} = \int_S T_i\,T_j\dd x, \qquad b_j = \int_S (T_s - T_0)\,T_j\dd x.}

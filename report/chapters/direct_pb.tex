@@ -2,51 +2,103 @@
 
 \subsection{Variational formulation}
 
-We seek $T \in V$ where $V = \{v \in H^1(\Omega) \mid v|_{\Gamma_{\text{haut}}} = T_c\}$.
 The boundary conditions are:
 \begin{itemize}
-  \item Left and right boundaries ($\Gamma_{\text{lat}}$): homogeneous Neumann condition $\partial_n T = 0$ (insulated walls).
-  \item Top boundary ($\Gamma_{\text{haut}}$): Dirichlet condition $T = T_c = 343\,\mathrm{K}$.
-  \item Bottom boundary ($\Gamma_{\text{bas}}$, door): Robin condition $\partial_n T + h(T - T_e) = 0$.
+  \item Left and right boundaries ($\Gamma_{\text{side}}$): homogeneous Neumann condition $\partial_n T = 0$ (insulated walls).
+  \item Top boundary ($\Gamma_{\text{top}}$): Dirichlet condition $T = T_c = 343\,\mathrm{K}$.
+  \item Bottom boundary ($\Gamma_{\text{bottom}}$): Robin condition $\partial_n T + h(T - T_e) = 0$ (door).\
 \end{itemize}
 
-By multiplying the equation $-\mathrm{div}(k\nabla T) = f$ by a test function $v \in V_0 = \{v \in H^1(\Omega) \mid v|_{\Gamma_{\text{haut}}} = 0\}$ and integrating by parts, we obtain:
-\[
-\int_\Omega k\,\nabla T \cdot \nabla v \dd x - \int_{\partial\Omega} k\,\partial_n T\, v \dd\sigma = \int_\Omega f\,v \dd x.
-\]
-By substituting the boundary conditions (zero Neumann on $\Gamma_{\text{lat}}$, Robin on $\Gamma_{\text{bas}}$, and $v=0$ on $\Gamma_{\text{haut}}$):
-
-\begin{equation}\label{eq:VF}
-\boxed{
-\int_\Omega k\,\nabla T \cdot \nabla v \dd x + \int_{\Gamma_{\text{bas}}} h\,T\,v \dd\sigma
-= \int_\Omega f\,v \dd x + \int_{\Gamma_{\text{bas}}} h\,T_e\,v \dd\sigma,
-\quad \forall v \in V_0.
-}
+The temperature T inside the oven is given by the stationary heat equation:
+\begin{equation}\label{base_eq}
+  -\mathrm{div}(k\nabla T) = f
 \end{equation}
 
-\paragraph{Analysis.}
-The bilinear form $a(T,v) = \int_\Omega k\nabla T\cdot\nabla v\dd x + \int_{\Gamma_{\text{bas}}} hTv\dd\sigma$ is:
-\begin{itemize}
-  \item \textit{Continuous} on $H^1(\Omega)$ by the Cauchy-Schwarz and trace inequalities.
-  \item \textit{Coercive} on $V_0$: since $k \geq 1 > 0$ and $h > 0$, the Dirichlet condition on $\Gamma_{\text{haut}}$ ensures that the $H^1$ semi-norm is a norm equivalent to the $H^1$ norm on $V_0$ (Poincaré inequality).
-\end{itemize}
-The right-hand side is a continuous linear form on $V_0$. The Lax-Milgram theorem thus guarantees the existence and uniqueness of the solution.
+We introduce a lifting function $\tilde{T} \in H^1(\Omega)$ such that $\tilde{T}|_{\Gamma_{\text{top}}} = T_c$. Then, we write $T = \tilde{T} + T_0$, where $T_0$ satisfies the homogeneous Dirichlet condition on $\Gamma_{\text{top}}$.
+
+By multiplying the equation~\eqref{base_eq} by a test function $v \in V = \{v \in H^1(\Omega) \mid v|_{\Gamma_{\text{top}}} = 0\}$ and integrating by parts, we obtain:
+\begin{equation}
+\int_\Omega k\,\nabla T \cdot \nabla v \dd x - \int_{\partial\Omega} k\,\partial_n T\, v \dd\sigma = \int_\Omega f\,v \dd x.
+\end{equation}
+By substituting the boundary conditions (zero Neumann on $\Gamma_{\text{side}}$, Robin on $\Gamma_{\text{bottom}}$, and $v=0$ on $\Gamma_{\text{top}}$) and adding the contribution of the lifting function, we arrive at the variational formulation:
+
+\begin{equation}\label{eq:VF}
+  \boxed{
+  \text{Find } T_0 \in V \text{ such that } a(T_0,v) = l(v), \quad \forall v \in V
+  }
+\end{equation}where:
+\begin{equation}
+a(T_0,v) = \int_\Omega k\,\nabla T_0 \cdot \nabla v \dd x + \int_{\Gamma_{\text{bottom}}} k h\,T_0\,v \dd\sigma,
+\end{equation}
+\begin{equation}
+l(v) = \int_\Omega f\,v \dd x + \int_{\Gamma_{\text{bottom}}} k h\,(T_e - \tilde{T})\,v \dd\sigma - \int_\Omega k\,\nabla \tilde{T} \cdot \nabla v \dd x
+\end{equation}
+
+\paragraph{Analysis (Lax-Milgram Theorem)}
+Let $V = \{v \in H^1(\Omega) \mid v = 0 \text{ on } \Gamma_{\text{top}}\}$ be equipped with the $H^1$-norm $\|v\|_{H^1}^2 = \|v\|_{L^2}^2 + \|\nabla v\|_{L^2}^2$. Recall that the thermal conductivity $k \in L^\infty(\Omega)$ satisfies $1 \le k(\mathbf{x}) \le 10$ a.e. in $\Omega$, and $h = 1$.
+
+To apply the Lax-Milgram theorem, we must verify three hypotheses:
+
+\begin{enumerate}
+  \item \textbf{Continuity of the bilinear form $a(\cdot, \cdot)$:}
+  For all $u, v \in V$, using the triangle inequality and the upper bound of $k$, we have:
+  \begin{equation*}
+      |a(u,v)| \le 10 \displaystyle\left\lvert\int_\Omega \nabla u \cdot \nabla v \dd x \right \rvert + 10 \displaystyle\left\lvert\int_{\Gamma_{\text{bottom}}} uv \dd\sigma \right\rvert.
+  \end{equation*}
+  By applying Cauchy-Schwarz, and using the Trace inequality for the right integral, we obtain:
+  \begin{equation*}
+      |a(u,v)| \le 10 \|\nabla u\|_{L^2} \|\nabla v\|_{L^2} + 10 C_{\text{tr}}^2 \|u\|_{H^1} \|v\|_{H^1}.
+  \end{equation*}
+  Since $\|\nabla v\|_{L^2} \le \|v\|_{H^1}$, there exists a constant $M > 0$ such that $|a(u,v)| \le M \|u\|_{H^1} \|v\|_{H^1}$. Thus, $a(\cdot, \cdot)$ is continuous.
+
+  \item \textbf{Coercivity of $a(\cdot, \cdot)$:}
+  For all $v \in V$, since $k \ge 1$ and $k h v^2 \ge 0$, we have:
+  \begin{equation*}
+      a(v,v) = \int_\Omega k |\nabla v|^2 \dd x + \int_{\Gamma_{\text{bottom}}} k h v^2 \dd\sigma \ge \int_\Omega |\nabla v|^2 \dd x = \|\nabla v\|_{L^2}^2.
+  \end{equation*}
+  Since $\Omega$ is connected and the Dirichlet boundary $\Gamma_{\text{top}}$ has a strictly positive measure, the Poincaré inequality holds on $V$. 
+  
+  Thus, there exists a constant $C_P > 0$ such that $\|v\|_{L^2(\Omega)} \le C_P \|\nabla v\|_{L^2(\Omega)}$ for all $v \in V$.
+  
+  Using the definition of the $H^1$-norm ($\|v\|_{H^1}^2 = \|v\|_{L^2}^2 + \|\nabla v\|_{L^2}^2$), this implies that there exists $\alpha > 0$ such that:
+  \begin{equation*}
+      a(v,v) \ge \|\nabla v\|_{L^2}^2 \ge \alpha \|v\|_{H^1}^2.
+  \end{equation*}
+  Thus, the bilinear form $a(\cdot, \cdot)$ is coercive on $V$.
+
+  \item \textbf{Continuity of the linear form $l(\cdot)$:}
+  For all $v \in V$, we use the triangle inequality and the bounds of $k$:
+  \begin{equation*}
+      |l(v)| \le \displaystyle\left\lvert \int_\Omega f v \dd x \right \rvert+ 10 \displaystyle\left\lvert \int_{\Gamma_{\text{bottom}}} (T_e - \tilde{T}) v \dd\sigma \right \rvert+ 10 \displaystyle\left\lvert \int_\Omega  \nabla \tilde{T} \cdot \nabla v \dd x \right\rvert.
+  \end{equation*}
+  Applying the Cauchy-Schwarz inequality and the Trace inequality:
+  \begin{equation*}
+      |l(v)| \le \|f\|_{L^2} \|v\|_{L^2} + 10 \|T_e - \tilde{T}\|_{L^2(\Gamma_{\text{bottom}})} C_{\text{tr}} \|v\|_{H^1} + 10 \|\nabla \tilde{T}\|_{L^2} \|\nabla v\|_{L^2}.
+  \end{equation*}
+  Since $\tilde{T}$ is a fixed function in $H^1(\Omega)$ and $f \in L^2(\Omega)$, all terms multiplying the norms of $v$ are bounded constants. Hence, there exists $C > 0$ such that:
+  \begin{equation*}
+      |l(v)| \le C \|v\|_{H^1}.
+  \end{equation*}
+  Thus, $l(\cdot)$ is continuous.
+\end{enumerate}
+
+\textbf{Conclusion:} Since $V$ is a Hilbert space, $a(\cdot, \cdot)$ is a continuous and coercive bilinear form, and $l(\cdot)$ is a continuous linear form, the Lax-Milgram theorem guarantees the existence and uniqueness of the solution $T_0 \in V$.
 
 \subsection{Finite element approximation and linear system}
 
-We approximate $V_0$ by a finite-dimensional space $V_h \subset V_0$ based on a triangular mesh $\mathcal{T}_h$ of $\Omega$ and $\mathbb{P}_1$ finite elements (piecewise affine continuous functions). Let $(\varphi_j)_{j=1}^N$ be the nodal basis of $V_h$.
+We approximate $V$ by a finite-dimensional space $V_h \subset V$ based on a triangular mesh $\mathcal{T}_h$ of $\Omega$ and $\mathbb{P}_1$ finite elements. Let $(\varphi_j)_{j=1}^N$ be the nodal basis of $V_h$.
 
 We write $T_h = \sum_{j=1}^N T_j\,\varphi_j$ and we seek the $T_j$ such that~\eqref{eq:VF} is satisfied for all $v = \varphi_i$. This leads to the linear system:
-\[
+\begin{equation}
 \mathbf{A}\,\mathbf{T} = \mathbf{b},
-\]
+\end{equation}
 where:
-\[
-A_{ij} = \int_\Omega k\,\nabla\varphi_j\cdot\nabla\varphi_i\dd x + \int_{\Gamma_{\text{bas}}} h\,\varphi_j\,\varphi_i\dd\sigma,
+\begin{equation}
+A_{ij} = \int_\Omega k\,\nabla\varphi_j\cdot\nabla\varphi_i\dd x + \int_{\Gamma_{\text{bottom}}} h\,\varphi_j\,\varphi_i\dd\sigma,
 \qquad
-b_i = \int_\Omega f\,\varphi_i\dd x + \int_{\Gamma_{\text{bas}}} h\,T_e\,\varphi_i\dd\sigma.
-\]
-The Dirichlet condition $T = T_c$ on $\Gamma_{\text{haut}}$ is imposed by modifying the corresponding rows of $\mathbf{A}$ and $\mathbf{b}$ (elimination of Dirichlet degrees of freedom). The matrix $\mathbf{A}$ is symmetric positive definite, sparse, and the system is solved by a direct solver (LU).
+b_i = \int_\Omega f\,\varphi_i\dd x + \int_{\Gamma_{\text{bottom}}} h\,T_e\,\varphi_i\dd\sigma.
+\end{equation}
+The Dirichlet condition $T = T_c$ on $\Gamma_{\text{top}}$ is imposed by modifying the corresponding rows of $\mathbf{A}$ and $\mathbf{b}$ (elimination of Dirichlet degrees of freedom). The matrix $\mathbf{A}$ is symmetric positive definite, sparse, and the system is solved by a direct solver (LU).
 
 \subsection{FreeFem++ implementation and comments}
 
@@ -59,12 +111,12 @@ For $\alpha_i = 10^4$ (i=1,\ldots,6), we observe a higher temperature around the
 \subsection{Transient problem (heating phase)}
 
 To describe the temperature rise, we add the unsteady term $\rho c\,\partial_t T$, which gives:
-\[
+\begin{equation}
 \rho c\,\partial_t T - \mathrm{div}(k\nabla T) = f \quad \text{in } \Omega \times (0,t_{\max}).
-\]
+\end{equation}
 We approximate the time derivative by an implicit Euler scheme with step $\Delta t$: $\partial_t T^{n+1} \approx (T^{n+1} - T^n)/\Delta t$. The variational formulation at each time step is:
-\[
-\int_\Omega \frac{\rho c}{\Delta t}T^{n+1}v\dd x + \int_\Omega k\nabla T^{n+1}\cdot\nabla v\dd x + \int_{\Gamma_{\text{bas}}} hT^{n+1}v\dd\sigma
-= \int_\Omega \left(\frac{\rho c}{\Delta t}T^n + f\right)v\dd x + \int_{\Gamma_{\text{bas}}} hT_e\,v\dd\sigma.
-\]
+\begin{equation}
+\int_\Omega \frac{\rho c}{\Delta t}T^{n+1}v\dd x + \int_\Omega k\nabla T^{n+1}\cdot\nabla v\dd x + \int_{\Gamma_{\text{bottom}}} hT^{n+1}v\dd\sigma
+= \int_\Omega \left(\frac{\rho c}{\Delta t}T^n + f\right)v\dd x + \int_{\Gamma_{\text{bottom}}} hT_e\,v\dd\sigma.
+\end{equation}
 The initial condition is $T^0 = T_e = 293\,\mathrm{K}$ (oven initially at room temperature). The scheme is unconditionally stable (implicit Euler), and the solution converges to the stationary solution as $t\to+\infty$.
