@@ -1,29 +1,26 @@
-// Projet VMAM 2025-2026 : Distribution de chaleur dans un four
-// Auteurs : Casals Diego
-
 verbosity = 0;
-real Tc  = 343.0;   // Temperature mur du haut (K)
-real Te  = 293.0;   // Temperature exterieure (K)
-real hc  = 1.0;     // Coefficient de transfert thermique
-real r0  = 0.05;    // Rayon des resistances (m)
-real Ts  = 400.0;   // Temperature desiree dans S (K)
+real Tc  = 343.0;   // Top wall temperature (K)
+real Te  = 293.0;   // External temperature (K)
+real hc  = 1.0;     // Heat transfer coefficient
+real r0  = 0.05;    // Resistors radius (m)
+real Ts  = 400.0;   // Desired temperature in S (K)
 
-// Centres des 6 resistances : {-1, 0, 1} x {-0.75, 0.75}
+// Centers of the 6 resistors: {-1, 0, 1} x {-0.75, 0.75}
 real cx1 = -1.0, cx2 = 0.0, cx3 = 1.0, cx4 = -1.0, cx5 = 0.0, cx6 = 1.0;
 real cy1 = -0.75, cy2 = -0.75, cy3 = -0.75, cy4 = 0.75, cy5 = 0.75, cy6 = 0.75;
 
-// CONSTRUCTION DU MAILLAGE
+// MESH CONSTRUCTION
 int nO = 30, nC = 15, nSm = 20;
 
-border bBas(t=-1.5, 1.5)    { x=t;    y=-1;   label=1; }
-border bDroite(t=-1, 1)     { x=1.5;  y=t;    label=2; }
-border bHaut(t=1.5, -1.5)   { x=t;    y=1;    label=3; }
-border bGauche(t=1, -1)     { x=-1.5; y=t;    label=4; }
+border bBottom(t=-1.5, 1.5) { x=t;    y=-1;   label=1; }
+border bRight(t=-1, 1)      { x=1.5;  y=t;    label=2; }
+border bTop(t=1.5, -1.5)    { x=t;    y=1;    label=3; }
+border bLeft(t=1, -1)       { x=-1.5; y=t;    label=4; }
 
-border sBas(t=-0.75, 0.75)  { x=t;    y=-0.5; label=10; }
-border sDroite(t=-0.5, 0.5) { x=0.75; y=t;    label=10; }
-border sHaut(t=0.75, -0.75) { x=t;    y=0.5;  label=10; }
-border sGauche(t=0.5, -0.5) { x=-0.75;y=t;    label=10; }
+border sBottom(t=-0.75, 0.75)  { x=t;    y=-0.5; label=10; }
+border sRight(t=-0.5, 0.5)     { x=0.75; y=t;    label=10; }
+border sTop(t=0.75, -0.75)     { x=t;    y=0.5;  label=10; }
+border sLeft(t=0.5, -0.5)      { x=-0.75;y=t;    label=10; }
 
 border Circ1(t=0, 2*pi) { x=cx1+r0*cos(t); y=cy1+r0*sin(t); label=21; }
 border Circ2(t=0, 2*pi) { x=cx2+r0*cos(t); y=cy2+r0*sin(t); label=22; }
@@ -33,20 +30,20 @@ border Circ5(t=0, 2*pi) { x=cx5+r0*cos(t); y=cy5+r0*sin(t); label=25; }
 border Circ6(t=0, 2*pi) { x=cx6+r0*cos(t); y=cy6+r0*sin(t); label=26; }
 
 mesh Th = buildmesh(
-    bBas(3*nO) + bDroite(2*nO) + bHaut(3*nO) + bGauche(2*nO)
-    + sBas(nSm) + sDroite(nSm) + sHaut(nSm) + sGauche(nSm)
+    bBottom(3*nO) + bRight(2*nO) + bTop(3*nO) + bLeft(2*nO)
+    + sBottom(nSm) + sRight(nSm) + sTop(nSm) + sLeft(nSm)
     + Circ1(nC) + Circ2(nC) + Circ3(nC) + Circ4(nC) + Circ5(nC) + Circ6(nC)
 );
 
-cout << "=== MAILLAGE ===" << endl;
-cout << "Nombre de triangles : " << Th.nt << endl;
-cout << "Nombre de sommets   : " << Th.nv << endl;
-plot(Th, wait=true, ps="maillage.eps", cmm="Maillage du four");
+cout << "=== MESH ===" << endl;
+cout << "Number of triangles : " << Th.nt << endl;
+cout << "Number of vertices  : " << Th.nv << endl;
+plot(Th, wait=true, ps="mesh.eps", cmm="Oven mesh");
 
 fespace Vh(Th, P1);
 Vh uh, vh;
 
-// Identification des regions
+// Region identification
 int regS  = Th(0, 0).region;
 int regC1 = Th(cx1, cy1).region;
 int regC2 = Th(cx2, cy2).region;
@@ -59,11 +56,11 @@ cout << "Region S  : " << regS << endl;
 cout << "Region C1 : " << regC1 << ", C2 : " << regC2 << ", C3 : " << regC3 << endl;
 cout << "Region C4 : " << regC4 << ", C5 : " << regC5 << ", C6 : " << regC6 << endl;
 
-// Coefficient de diffusion : k=1 dans S, k=10 ailleurs
+// Diffusion coefficient: k=1 in S, k=10 elsewhere
 Vh kk;
 kk = 1.0 + 9.0*(region != regS);
 
-// Indicatrices (declarees au niveau global)
+// Indicator functions (declared globally)
 Vh chiS;
 chiS = (region == regS);
 
@@ -75,8 +72,8 @@ chiCi4 = (region == regC4);
 chiCi5 = (region == regC5);
 chiCi6 = (region == regC6);
 
-//   PARTIE 1 : PROBLEME DIRECT STATIONNAIRE
-cout << "\n===== PARTIE 1 : PROBLEME DIRECT =====" << endl;
+//   PART 1: STATIONARY DIRECT PROBLEM
+cout << "\n===== PART 1: DIRECT PROBLEM =====" << endl;
 
 real al1 = 1e4, al2 = 1e4, al3 = 1e4, al4 = 1e4, al5 = 1e4, al6 = 1e4;
 
@@ -92,16 +89,16 @@ solve PbDirect(uh, vh) =
   + on(3, uh = Tc);
 
 plot(uh, fill=true, wait=true, value=true, ps="part1_direct.eps",
-     cmm="Partie 1c : Temperature stationnaire");
+     cmm="Part 1c: Stationary temperature");
 
-real aireS = int2d(Th)(chiS);
-real TmoyS = int2d(Th)(chiS * uh) / aireS;
-real ecartS = sqrt(int2d(Th)(chiS * (uh - TmoyS)^2) / aireS);
+real areaS = int2d(Th)(chiS);
+real TavgS = int2d(Th)(chiS * uh) / areaS;
+real stdDevS = sqrt(int2d(Th)(chiS * (uh - TavgS)^2) / areaS);
 cout << "T min = " << uh[].min << ", T max = " << uh[].max << endl;
-cout << "T moy dans S = " << TmoyS << ", ecart-type = " << ecartS << endl;
+cout << "T avg in S = " << TavgS << ", std deviation = " << stdDevS << endl;
 
-//   PARTIE 1d : PROBLEME TRANSITOIRE
-cout << "\n===== PARTIE 1d : TRANSITOIRE =====" << endl;
+//   PART 1d: TRANSIENT PROBLEM
+cout << "\n===== PART 1d: TRANSIENT =====" << endl;
 
 real rhoc = 1.0;
 real dt   = 0.02;
@@ -110,7 +107,7 @@ int  Nt   = 300;
 Vh Told, Tnew;
 Told = Te;
 
-problem PbTransitoire(Tnew, vh) =
+problem PbTransient(Tnew, vh) =
     int2d(Th)(rhoc/dt * Tnew * vh + kk * (dx(Tnew)*dx(vh) + dy(Tnew)*dy(vh)))
   + int1d(Th, 1)(hc * Tnew * vh)
   - int2d(Th)((rhoc/dt * Told + fsource) * vh)
@@ -118,20 +115,20 @@ problem PbTransitoire(Tnew, vh) =
   + on(3, Tnew = Tc);
 
 for (int n = 0; n < Nt; n++) {
-    PbTransitoire;
+    PbTransient;
     Told = Tnew;
     if (n % 50 == 0 || n == Nt-1) {
-        real TmS = int2d(Th)(chiS * Tnew) / aireS;
-        cout << "  t=" << (n+1)*dt << ", T moy S=" << TmS << endl;
+        real TmS = int2d(Th)(chiS * Tnew) / areaS;
+        cout << "  t=" << (n+1)*dt << ", T avg S=" << TmS << endl;
         plot(Tnew, fill=true, value=true, wait=false,
-             cmm="Transitoire t=" + (n+1)*dt);
+             cmm="Transient t=" + (n+1)*dt);
     }
 }
 plot(Tnew, fill=true, value=true, wait=true, ps="part1d_final.eps",
-     cmm="Partie 1d : etat final");
+     cmm="Part 1d: final state");
 
-//   PARTIE 2 : OPTIMISATION
-cout << "\n===== PARTIE 2 : OPTIMISATION =====" << endl;
+//   PART 2: OPTIMIZATION
+cout << "\n===== PART 2: OPTIMIZATION =====" << endl;
 
 // 2a) T(alpha,x) = T0(x) + sum alpha_i Ti(x)
 Vh T0, TT1, TT2, TT3, TT4, TT5, TT6;
@@ -141,7 +138,7 @@ solve PbT0(T0, vh) =
   + int1d(Th,1)(hc*T0*vh)
   - int1d(Th,1)(hc*Te*vh)
   + on(3, T0=Tc);
-plot(T0, fill=true, value=true, wait=true, cmm="T0 sans source");
+plot(T0, fill=true, value=true, wait=true, cmm="T0 without source");
 
 solve PbTT1(TT1, vh) = int2d(Th)(kk*(dx(TT1)*dx(vh)+dy(TT1)*dy(vh)))
   + int1d(Th,1)(hc*TT1*vh) - int2d(Th)(chiCi1*vh) + on(3, TT1=0);
@@ -156,9 +153,9 @@ solve PbTT5(TT5, vh) = int2d(Th)(kk*(dx(TT5)*dx(vh)+dy(TT5)*dy(vh)))
 solve PbTT6(TT6, vh) = int2d(Th)(kk*(dx(TT6)*dx(vh)+dy(TT6)*dy(vh)))
   + int1d(Th,1)(hc*TT6*vh) - int2d(Th)(chiCi6*vh) + on(3, TT6=0);
 
-cout << "T0, T1...T6 calcules." << endl;
+cout << "T0, T1...T6 computed." << endl;
 
-// 2b) Systeme M * alpha_opt = b
+// 2b) System M * alpha_opt = b
 // M_ij = int_S Ti Tj, b_j = int_S (Ts-T0) Tj
 real[int, int] Mmat(6, 6);
 real[int] bvec(6);
@@ -203,7 +200,7 @@ Mmat(5,2) = Mmat(2,5); Mmat(5,3) = Mmat(3,5); Mmat(5,4) = Mmat(4,5);
 Mmat(5,5) = int2d(Th)(chiS*TT6*TT6);
 bvec[5]   = int2d(Th)(chiS*(Ts-T0)*TT6);
 
-// Resolution par Gauss avec pivot partiel (6x6)
+// Gauss resolution with partial pivoting (6x6)
 real[int, int] Maug(6, 7);
 for (int i = 0; i < 6; i++) {
     for (int j = 0; j < 6; j++)
@@ -235,20 +232,20 @@ for (int i = 5; i >= 0; i--) {
     alphaOpt[i] /= Maug(i, i);
 }
 
-cout << "\n--- 2c) Coefficients optimaux (Ts=" << Ts << "K) ---" << endl;
+cout << "\n--- 2c) Optimal coefficients (Ts=" << Ts << "K) ---" << endl;
 for (int i = 0; i < 6; i++)
     cout << "  alpha*_" << i+1 << " = " << alphaOpt[i] << endl;
 
-// Verification par decomposition
+// Verification by decomposition
 Vh Topt;
 Topt[] = T0[];
 Topt[] += alphaOpt[0]*TT1[]; Topt[] += alphaOpt[1]*TT2[];
 Topt[] += alphaOpt[2]*TT3[]; Topt[] += alphaOpt[3]*TT4[];
 Topt[] += alphaOpt[4]*TT5[]; Topt[] += alphaOpt[5]*TT6[];
 plot(Topt, fill=true, value=true, wait=true, ps="part2c_Topt.eps",
-     cmm="T optimal (decomposition)");
+     cmm="Optimal T (decomposition)");
 
-// Verification par resolution directe
+// Verification by direct resolution
 Vh fsourceOpt;
 fsourceOpt = alphaOpt[0]*chiCi1 + alphaOpt[1]*chiCi2 + alphaOpt[2]*chiCi3
            + alphaOpt[3]*chiCi4 + alphaOpt[4]*chiCi5 + alphaOpt[5]*chiCi6;
@@ -259,25 +256,25 @@ solve PbVerif(ToptDirect, vh) =
   + int1d(Th,1)(hc*ToptDirect*vh) - int2d(Th)(fsourceOpt*vh)
   - int1d(Th,1)(hc*Te*vh) + on(3, ToptDirect=Tc);
 plot(ToptDirect, fill=true, value=true, wait=true, ps="part2c_direct.eps",
-     cmm="T optimal (direct)");
+     cmm="Optimal T (direct)");
 
-real TmoyOpt  = int2d(Th)(chiS*ToptDirect) / aireS;
-real ecartOpt = sqrt(int2d(Th)(chiS*(ToptDirect-Ts)^2) / aireS);
+real TavgOpt  = int2d(Th)(chiS*ToptDirect) / areaS;
+real stdDevOpt = sqrt(int2d(Th)(chiS*(ToptDirect-Ts)^2) / areaS);
 real Jopt     = 0.5*int2d(Th)(chiS*(ToptDirect-Ts)^2);
 real errDec   = sqrt(int2d(Th)((Topt-ToptDirect)^2));
 
-cout << "T moy dans S = " << TmoyOpt << " (cible " << Ts << ")" << endl;
-cout << "Ecart-type   = " << ecartOpt << endl;
+cout << "T avg in S = " << TavgOpt << " (target " << Ts << ")" << endl;
+cout << "Std deviation = " << stdDevOpt << endl;
 cout << "J(alpha*)    = " << Jopt << endl;
 cout << "Err decomp   = " << errDec << endl;
 
-Vh ecart;
-ecart = ToptDirect - Ts;
-plot(ecart, fill=true, value=true, wait=true, ps="part2c_ecart.eps",
-     cmm="Ecart T_opt - Ts");
+Vh diff;
+diff = ToptDirect - Ts;
+plot(diff, fill=true, value=true, wait=true, ps="part2c_diff.eps",
+     cmm="Diff T_opt - Ts");
 
-//   PARTIE 2d : AMELIORATION (8 sources)
-cout << "\n===== PARTIE 2d : 8 SOURCES =====" << endl;
+//   PART 2d: IMPROVEMENT (8 sources)
+cout << "\n===== PART 2d: 8 SOURCES =====" << endl;
 
 real cx2d1=-1, cx2d2=-0.5, cx2d3=0.5, cx2d4=1;
 real cx2d5=-1, cx2d6=-0.5, cx2d7=0.5, cx2d8=1;
@@ -294,8 +291,8 @@ border Cd7(t=0,2*pi){x=cx2d7+r0*cos(t); y=cy2d7+r0*sin(t); label=37;}
 border Cd8(t=0,2*pi){x=cx2d8+r0*cos(t); y=cy2d8+r0*sin(t); label=38;}
 
 mesh Th2 = buildmesh(
-    bBas(3*nO) + bDroite(2*nO) + bHaut(3*nO) + bGauche(2*nO)
-    + sBas(nSm) + sDroite(nSm) + sHaut(nSm) + sGauche(nSm)
+    bBottom(3*nO) + bRight(2*nO) + bTop(3*nO) + bLeft(2*nO)
+    + sBottom(nSm) + sRight(nSm) + sTop(nSm) + sLeft(nSm)
     + Cd1(nC)+Cd2(nC)+Cd3(nC)+Cd4(nC)+Cd5(nC)+Cd6(nC)+Cd7(nC)+Cd8(nC)
 );
 
@@ -310,7 +307,7 @@ int regD7=Th2(cx2d7,cy2d7).region, regD8=Th2(cx2d8,cy2d8).region;
 
 Vh2 kk2;    kk2 = 1.0 + 9.0*(region != regS2);
 Vh2 chiS2;  chiS2 = (region == regS2);
-real aireS2 = int2d(Th2)(chiS2);
+real areaS2 = int2d(Th2)(chiS2);
 
 Vh2 chD1, chD2, chD3, chD4, chD5, chD6, chD7, chD8;
 chD1=(region==regD1); chD2=(region==regD2); chD3=(region==regD3); chD4=(region==regD4);
@@ -338,7 +335,7 @@ solve P7d(TD7,v2) = int2d(Th2)(kk2*(dx(TD7)*dx(v2)+dy(TD7)*dy(v2)))
 solve P8d(TD8,v2) = int2d(Th2)(kk2*(dx(TD8)*dx(v2)+dy(TD8)*dy(v2)))
   + int1d(Th2,1)(hc*TD8*v2) - int2d(Th2)(chD8*v2) + on(3,TD8=0);
 
-// Systeme 8x8
+// System 8x8
 real[int,int] M2(8,8);
 real[int] b2(8);
 
@@ -378,7 +375,7 @@ b2[6]=int2d(Th2)(chiS2*(Ts-T02)*TD7);
 M2(7,7)=int2d(Th2)(chiS2*TD8*TD8);
 b2[7]=int2d(Th2)(chiS2*(Ts-T02)*TD8);
 
-// Symetrie
+// Symmetry
 for (int i = 0; i < 8; i++)
     for (int j = 0; j < i; j++)
         M2(i,j) = M2(j,i);
@@ -409,7 +406,7 @@ for (int i = 7; i >= 0; i--) {
     alphaOpt2[i] /= Maug2(i,i);
 }
 
-cout << "--- Coefficients optimaux (8 sources) ---" << endl;
+cout << "--- Optimal coefficients (8 sources) ---" << endl;
 for (int i = 0; i < 8; i++)
     cout << "  alpha*_" << i+1 << " = " << alphaOpt2[i] << endl;
 
@@ -421,17 +418,17 @@ Topt2[] += alphaOpt2[4]*TD5[]; Topt2[] += alphaOpt2[5]*TD6[];
 Topt2[] += alphaOpt2[6]*TD7[]; Topt2[] += alphaOpt2[7]*TD8[];
 
 plot(Topt2, fill=true, value=true, wait=true, ps="part2d_8sources.eps",
-     cmm="Partie 2d : T optimal 8 sources");
+     cmm="Part 2d: Optimal T 8 sources");
 
-real ecartOpt2 = sqrt(int2d(Th2)(chiS2*(Topt2-Ts)^2) / aireS2);
+real stdDevOpt2 = sqrt(int2d(Th2)(chiS2*(Topt2-Ts)^2) / areaS2);
 real Jopt2     = 0.5*int2d(Th2)(chiS2*(Topt2-Ts)^2);
 
-cout << "\n--- Comparaison ---" << endl;
-cout << "6 sources : J=" << Jopt << ", ecart=" << ecartOpt << endl;
-cout << "8 sources : J=" << Jopt2 << ", ecart=" << ecartOpt2 << endl;
+cout << "\n--- Comparison ---" << endl;
+cout << "6 sources: J=" << Jopt << ", std dev=" << stdDevOpt << endl;
+cout << "8 sources: J=" << Jopt2 << ", std dev=" << stdDevOpt2 << endl;
 
-//   PARTIE 3 : PROBLEME INVERSE
-cout << "\n===== PARTIE 3 : PROBLEME INVERSE =====" << endl;
+//   PART 3: INVERSE PROBLEM
+cout << "\n===== PART 3: INVERSE PROBLEM =====" << endl;
 
 real alphaTrue = 5.0e4;
 real xcTrue = -0.5;
@@ -447,12 +444,12 @@ solve PbMeas(Tmeas, vh) =
   + int1d(Th,1)(hc*Tmeas*vh) - int2d(Th)(gsourceTrue*vh)
   - int1d(Th,1)(hc*Te*vh) + on(3, Tmeas=Tc);
 plot(Tmeas, fill=true, value=true, wait=true, ps="part3_Tmeas.eps",
-     cmm="T mesure (source vraie)");
+     cmm="Measured T (true source)");
 
-cout << "Source vraie : alpha=" << alphaTrue
+cout << "True source: alpha=" << alphaTrue
      << ", pos=(" << xcTrue << "," << ycTrue << ")" << endl;
 
-// Recherche sur grille
+// Grid search
 int Ngx = 15, Ngy = 12;
 real xmin = -1.3, xmax = 1.3;
 real ymin2 = -0.8, ymax2 = 0.8;
@@ -464,17 +461,17 @@ real[int,int] alphaGrid(Ngx, Ngy);
 real Jmin = 1e30;
 int ixmin = 0, iymin = 0;
 
-// Declarer Vh HORS de la boucle
-Vh gsrc, Tsrc, Tcandidat;
+// Declare Vh OUTSIDE the loop
+Vh gsrc, Tsrc, Tcandidate;
 real xcloop, ycloop, num, den, alphaC, Jval;
 
-// Utiliser problem (compile 1 fois, re-evalue a chaque appel)
+// Use problem (compiled once, re-evaluated at each call)
 problem PbSrc(Tsrc, vh) =
     int2d(Th)(kk*(dx(Tsrc)*dx(vh)+dy(Tsrc)*dy(vh)))
   + int1d(Th,1)(hc*Tsrc*vh) - int2d(Th)(gsrc*vh)
   + on(3, Tsrc=0);
 
-cout << "Recherche sur grille " << Ngx << "x" << Ngy << " ..." << endl;
+cout << "Grid search " << Ngx << "x" << Ngy << " ..." << endl;
 
 for (int ix = 0; ix < Ngx; ix++) {
     xcloop = xmin + ix * dxg;
@@ -491,11 +488,11 @@ for (int ix = 0; ix < Ngx; ix++) {
         if (abs(den) > 1e-30)
             alphaC = num / den;
 
-        Tcandidat[] = T0[];
-        Tcandidat[] += alphaC * Tsrc[];
+        Tcandidate[] = T0[];
+        Tcandidate[] += alphaC * Tsrc[];
 
-        Jval = 0.5*int1d(Th,2)((Tcandidat-Tmeas)^2)
-             + 0.5*int1d(Th,4)((Tcandidat-Tmeas)^2);
+        Jval = 0.5*int1d(Th,2)((Tcandidate-Tmeas)^2)
+             + 0.5*int1d(Th,4)((Tcandidate-Tmeas)^2);
 
         Jgrid(ix, iy) = Jval;
         alphaGrid(ix, iy) = alphaC;
@@ -503,23 +500,23 @@ for (int ix = 0; ix < Ngx; ix++) {
         if (Jval < Jmin) { Jmin = Jval; ixmin = ix; iymin = iy; }
     }
     if (ix % 5 == 0)
-        cout << "  Progression : " << ix+1 << "/" << Ngx << endl;
+        cout << "  Progress: " << ix+1 << "/" << Ngx << endl;
 }
 
 real xcFound = xmin + ixmin * dxg;
 real ycFound = ymin2 + iymin * dyg;
 real alphaFound = alphaGrid(ixmin, iymin);
 
-cout << "\n--- Resultat probleme inverse ---" << endl;
-cout << "Position trouvee : (" << xcFound << ", " << ycFound << ")" << endl;
-cout << "Position vraie   : (" << xcTrue << ", " << ycTrue << ")" << endl;
-cout << "Erreur position  : " << sqrt((xcFound-xcTrue)^2+(ycFound-ycTrue)^2) << " m" << endl;
-cout << "Intensite trouvee : " << alphaFound << endl;
-cout << "Intensite vraie   : " << alphaTrue << endl;
-cout << "Erreur intensite  : " << abs(alphaFound-alphaTrue)/alphaTrue*100.0 << " %" << endl;
-cout << "J minimum         : " << Jmin << endl;
+cout << "\n--- Inverse problem result ---" << endl;
+cout << "Found position: (" << xcFound << ", " << ycFound << ")" << endl;
+cout << "True position:  (" << xcTrue << ", " << ycTrue << ")" << endl;
+cout << "Position error: " << sqrt((xcFound-xcTrue)^2+(ycFound-ycTrue)^2) << " m" << endl;
+cout << "Found intensity: " << alphaFound << endl;
+cout << "True intensity:  " << alphaTrue << endl;
+cout << "Intensity error: " << abs(alphaFound-alphaTrue)/alphaTrue*100.0 << " %" << endl;
+cout << "Minimum J:       " << Jmin << endl;
 
-// Sauvegarde carte de cout
+// Save cost map
 {
     ofstream fout("cost_grid.dat");
     for (int ix = 0; ix < Ngx; ix++) {
@@ -530,8 +527,8 @@ cout << "J minimum         : " << Jmin << endl;
         }
         fout << endl;
     }
-    cout << "Carte de cout dans cost_grid.dat" << endl;
-    cout << "gnuplot : set pm3d; splot 'cost_grid.dat' with pm3d" << endl;
+    cout << "Cost map in cost_grid.dat" << endl;
+    cout << "gnuplot: set pm3d; splot 'cost_grid.dat' with pm3d" << endl;
 }
 
 // Verification
@@ -543,14 +540,14 @@ solve PbRecFound(TrecFound, vh) =
     int2d(Th)(kk*(dx(TrecFound)*dx(vh)+dy(TrecFound)*dy(vh)))
   + int1d(Th,1)(hc*TrecFound*vh) - int2d(Th)(gsrcFound*vh)
   - int1d(Th,1)(hc*Te*vh) + on(3, TrecFound=Tc);
-plot(TrecFound, fill=true, value=true, wait=true, ps="part3_reconstruit.eps",
-     cmm="T reconstruit");
+plot(TrecFound, fill=true, value=true, wait=true, ps="part3_reconstructed.eps",
+     cmm="Reconstructed T");
 
 Vh errInv;
 errInv = Tmeas - TrecFound;
-cout << "Erreur L2 globale  : " << sqrt(int2d(Th)(errInv^2)) << endl;
-cout << "Erreur L2 bords    : " << sqrt(int1d(Th,2)(errInv^2)+int1d(Th,4)(errInv^2)) << endl;
-plot(errInv, fill=true, value=true, wait=true, ps="part3_erreur.eps",
-     cmm="Erreur T_mesure - T_reconstruit");
+cout << "Global L2 error: " << sqrt(int2d(Th)(errInv^2)) << endl;
+cout << "Boundary L2 error: " << sqrt(int1d(Th,2)(errInv^2)+int1d(Th,4)(errInv^2)) << endl;
+plot(errInv, fill=true, value=true, wait=true, ps="part3_error.eps",
+     cmm="Error T_meas - T_reconstructed");
 
-cout << "\n=== PROJET TERMINE ===" << endl;
+cout << "\n=== PROJECT COMPLETED ===" << endl;

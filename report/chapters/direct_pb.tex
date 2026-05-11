@@ -1,0 +1,70 @@
+\section{Direct problem}
+
+\subsection{Variational formulation}
+
+We seek $T \in V$ where $V = \{v \in H^1(\Omega) \mid v|_{\Gamma_{\text{haut}}} = T_c\}$.
+The boundary conditions are:
+\begin{itemize}
+  \item Left and right boundaries ($\Gamma_{\text{lat}}$): homogeneous Neumann condition $\partial_n T = 0$ (insulated walls).
+  \item Top boundary ($\Gamma_{\text{haut}}$): Dirichlet condition $T = T_c = 343\,\mathrm{K}$.
+  \item Bottom boundary ($\Gamma_{\text{bas}}$, door): Robin condition $\partial_n T + h(T - T_e) = 0$.
+\end{itemize}
+
+By multiplying the equation $-\mathrm{div}(k\nabla T) = f$ by a test function $v \in V_0 = \{v \in H^1(\Omega) \mid v|_{\Gamma_{\text{haut}}} = 0\}$ and integrating by parts, we obtain:
+\[
+\int_\Omega k\,\nabla T \cdot \nabla v \dd x - \int_{\partial\Omega} k\,\partial_n T\, v \dd\sigma = \int_\Omega f\,v \dd x.
+\]
+By substituting the boundary conditions (zero Neumann on $\Gamma_{\text{lat}}$, Robin on $\Gamma_{\text{bas}}$, and $v=0$ on $\Gamma_{\text{haut}}$):
+
+\begin{equation}\label{eq:VF}
+\boxed{
+\int_\Omega k\,\nabla T \cdot \nabla v \dd x + \int_{\Gamma_{\text{bas}}} h\,T\,v \dd\sigma
+= \int_\Omega f\,v \dd x + \int_{\Gamma_{\text{bas}}} h\,T_e\,v \dd\sigma,
+\quad \forall v \in V_0.
+}
+\end{equation}
+
+\paragraph{Analysis.}
+The bilinear form $a(T,v) = \int_\Omega k\nabla T\cdot\nabla v\dd x + \int_{\Gamma_{\text{bas}}} hTv\dd\sigma$ is:
+\begin{itemize}
+  \item \textit{Continuous} on $H^1(\Omega)$ by the Cauchy-Schwarz and trace inequalities.
+  \item \textit{Coercive} on $V_0$: since $k \geq 1 > 0$ and $h > 0$, the Dirichlet condition on $\Gamma_{\text{haut}}$ ensures that the $H^1$ semi-norm is a norm equivalent to the $H^1$ norm on $V_0$ (Poincaré inequality).
+\end{itemize}
+The right-hand side is a continuous linear form on $V_0$. The Lax-Milgram theorem thus guarantees the existence and uniqueness of the solution.
+
+\subsection{Finite element approximation and linear system}
+
+We approximate $V_0$ by a finite-dimensional space $V_h \subset V_0$ based on a triangular mesh $\mathcal{T}_h$ of $\Omega$ and $\mathbb{P}_1$ finite elements (piecewise affine continuous functions). Let $(\varphi_j)_{j=1}^N$ be the nodal basis of $V_h$.
+
+We write $T_h = \sum_{j=1}^N T_j\,\varphi_j$ and we seek the $T_j$ such that~\eqref{eq:VF} is satisfied for all $v = \varphi_i$. This leads to the linear system:
+\[
+\mathbf{A}\,\mathbf{T} = \mathbf{b},
+\]
+where:
+\[
+A_{ij} = \int_\Omega k\,\nabla\varphi_j\cdot\nabla\varphi_i\dd x + \int_{\Gamma_{\text{bas}}} h\,\varphi_j\,\varphi_i\dd\sigma,
+\qquad
+b_i = \int_\Omega f\,\varphi_i\dd x + \int_{\Gamma_{\text{bas}}} h\,T_e\,\varphi_i\dd\sigma.
+\]
+The Dirichlet condition $T = T_c$ on $\Gamma_{\text{haut}}$ is imposed by modifying the corresponding rows of $\mathbf{A}$ and $\mathbf{b}$ (elimination of Dirichlet degrees of freedom). The matrix $\mathbf{A}$ is symmetric positive definite, sparse, and the system is solved by a direct solver (LU).
+
+\subsection{FreeFem++ implementation and comments}
+
+The implementation uses FreeFem++ with $\mathbb{P}_1$ elements. The geometry is constructed via the \texttt{border} and \texttt{buildmesh} commands, with refinement around the resistors and the zone $S$.
+
+The diffusion coefficient is defined by \texttt{kk = 1 + 9*(region != regS)}, i.e., $k=1$ in $S$ and $k=10$ elsewhere. The Robin condition on the door (label 1) is handled by the term \texttt{int1d(Th,1)(hc*uh*vh - hc*Te*vh)}, and the Dirichlet condition $T=T_c$ on the top (label 3) by \texttt{on(3, uh=Tc)}.
+
+For $\alpha_i = 10^4$ (i=1,\ldots,6), we observe a higher temperature around the resistors and a quasi-uniform distribution in $S$. We can verify that the temperature indeed increases from the door (cooling condition) towards the top (hot wall).
+
+\subsection{Transient problem (heating phase)}
+
+To describe the temperature rise, we add the unsteady term $\rho c\,\partial_t T$, which gives:
+\[
+\rho c\,\partial_t T - \mathrm{div}(k\nabla T) = f \quad \text{in } \Omega \times (0,t_{\max}).
+\]
+We approximate the time derivative by an implicit Euler scheme with step $\Delta t$: $\partial_t T^{n+1} \approx (T^{n+1} - T^n)/\Delta t$. The variational formulation at each time step is:
+\[
+\int_\Omega \frac{\rho c}{\Delta t}T^{n+1}v\dd x + \int_\Omega k\nabla T^{n+1}\cdot\nabla v\dd x + \int_{\Gamma_{\text{bas}}} hT^{n+1}v\dd\sigma
+= \int_\Omega \left(\frac{\rho c}{\Delta t}T^n + f\right)v\dd x + \int_{\Gamma_{\text{bas}}} hT_e\,v\dd\sigma.
+\]
+The initial condition is $T^0 = T_e = 293\,\mathrm{K}$ (oven initially at room temperature). The scheme is unconditionally stable (implicit Euler), and the solution converges to the stationary solution as $t\to+\infty$.

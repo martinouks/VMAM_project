@@ -1,0 +1,26 @@
+\section{Inverse problem}
+
+\subsection{Framework and numerical approach}
+
+We assume that a single source $f = \alpha_1 \mathbf{1}_{C_1}$ is unknown (unknown intensity $\alpha_1$ and localization $C_1$). We have measurements of $T$ on the lateral boundaries $\Gamma_{\text{lat}}$ (or of $\partial_n T$ on $\Gamma_{\text{haut}}$).
+
+We model the source by a Gaussian with position $(x_c, y_c)$ and standard deviation $\sigma = r_0$ (to overcome the non-differentiability of $\mathbf{1}_{C_1}$):
+\[
+f(x, y; x_c, y_c, \alpha) = \alpha\,\exp\!\left(-\frac{(x-x_c)^2+(y-y_c)^2}{2\sigma^2}\right).
+\]
+
+\paragraph{Least squares functional.}
+For a fixed candidate position $(x_c, y_c)$, we seek $\alpha$ minimizing the deviation from the measurements on $\Gamma_{\text{lat}}$:
+\[
+\mathcal{J}(x_c, y_c, \alpha) = \frac{1}{2}\int_{\Gamma_{\text{lat}}} \left|T(x_c,y_c,\alpha) - T^{\text{mes}}\right|^2\dd\sigma.
+\]
+By linearity, $T = T_0 + \alpha\,\tilde{T}$ where $\tilde{T}$ is the unitary solution ($\alpha=1$) associated with the Gaussian source. The optimal intensity for a given position is therefore:
+\[
+\alpha^*(x_c,y_c) = \frac{\displaystyle\int_{\Gamma_{\text{lat}}} (T^{\text{mes}}-T_0)\,\tilde{T}\dd\sigma}{\displaystyle\int_{\Gamma_{\text{lat}}} \tilde{T}^2\dd\sigma}.
+\]
+
+\paragraph{Grid search.}
+Since the position $(x_c, y_c)$ is the non-linear parameter, we proceed by a grid search over a $15\times12$ grid covering $[-1.3, 1.3]\times[-0.8, 0.8]$. For each grid point, we solve the direct problem ($\tilde{T}$), compute $\alpha^*$ using the formula above, and then evaluate $\mathcal{J}$. The selected position is the one that minimizes $\mathcal{J}$.
+
+\paragraph{Result.}
+The recovered position and intensity are close to the true values (position error in the order of the grid step, intensity error of a few percent), which validates the approach. Measurements on both lateral boundaries (labels 2 and 4 in FreeFem++) ensure better observability than a single boundary.
