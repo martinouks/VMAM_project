@@ -1,0 +1,148 @@
+include "common/common.edp"
+
+int nR = 15;
+
+// the 8 resistors
+border c11(t=-1.2, -0.2){x=t; y=0.75; label=31;}
+border c12(t=0.75, 0.9){x=-0.2; y=t; label=31;}
+border c13(t=-0.2, -1.2){x=t; y=0.9; label=31;}
+border c14(t=0.9, 0.75){x=-1.2; y=t; label=31;}
+
+border c21(t=0.2, 1.2){x=t; y=0.75; label=32;}
+border c22(t=0.75, 0.9){x=1.2; y=t; label=32;}
+border c23(t=1.2, 0.2){x=t; y=0.9; label=32;}
+border c24(t=0.9, 0.75){x=0.2; y=t; label=32;}
+
+border c31(t=-1.2, -0.2){x=t; y=-0.9; label=33;}
+border c32(t=-0.9, -0.75){x=-0.2; y=t; label=33;}
+border c33(t=-0.2, -1.2){x=t; y=-0.75; label=33;}
+border c34(t=-0.75, -0.9){x=-1.2; y=t; label=33;}
+
+border c41(t=0.2, 1.2){x=t; y=-0.9; label=34;}
+border c42(t=-0.9, -0.75){x=1.2; y=t; label=34;}
+border c43(t=1.2, 0.2){x=t; y=-0.75; label=34;}
+border c44(t=-0.75, -0.9){x=0.2; y=t; label=34;}
+
+border c51(t=-1.35, -1.15){x=t; y=0.1; label=35;}
+border c52(t=0.1, 0.6){x=-1.15; y=t; label=35;}
+border c53(t=-1.15, -1.35){x=t; y=0.6; label=35;}
+border c54(t=0.6, 0.1){x=-1.35; y=t; label=35;}
+
+border c61(t=-1.35, -1.15){x=t; y=-0.6; label=36;}
+border c62(t=-0.6, -0.1){x=-1.15; y=t; label=36;}
+border c63(t=-1.15, -1.35){x=t; y=-0.1; label=36;}
+border c64(t=-0.1, -0.6){x=-1.35; y=t; label=36;}
+
+border c71(t=1.15, 1.35){x=t; y=0.1; label=37;}
+border c72(t=0.1, 0.6){x=1.35; y=t; label=37;}
+border c73(t=1.35, 1.15){x=t; y=0.6; label=37;}
+border c74(t=0.6, 0.1){x=1.15; y=t; label=37;}
+
+border c81(t=1.15, 1.35){x=t; y=-0.6; label=38;}
+border c82(t=-0.6, -0.1){x=1.35; y=t; label=38;}
+border c83(t=1.35, 1.15){x=t; y=-0.1; label=38;}
+border c84(t=-0.1, -0.6){x=1.15; y=t; label=38;}
+
+mesh Th8 = buildmesh(
+    bBottom(4*nO) + bRight(3*nO) + bTop(4*nO) + bLeft(3*nO)
+    + sBottom(2*nS) + sRight(2*nS) + sTop(2*nS) + sLeft(2*nS)
+    + c11(nR) + c12(nR) + c13(nR) + c14(nR)
+    + c21(nR) + c22(nR) + c23(nR) + c24(nR)
+    + c31(nR) + c32(nR) + c33(nR) + c34(nR)
+    + c41(nR) + c42(nR) + c43(nR) + c44(nR)
+    + c51(nR) + c52(nR) + c53(nR) + c54(nR)
+    + c61(nR) + c62(nR) + c63(nR) + c64(nR)
+    + c71(nR) + c72(nR) + c73(nR) + c74(nR)
+    + c81(nR) + c82(nR) + c83(nR) + c84(nR)
+);
+
+fespace Vh8(Th8, P1);
+Vh8 uh8, vh8;
+
+int regS8  = Th8(0.0, 0.0).region;
+int regC18 = Th8(-0.7, 0.825).region;
+int regC28 = Th8(0.7, 0.825).region;
+int regC38 = Th8(-0.7, -0.825).region;
+int regC48 = Th8(0.7, -0.825).region;
+int regC58 = Th8(-1.25, 0.35).region;
+int regC68 = Th8(-1.25, -0.35).region;
+int regC78 = Th8(1.25, 0.35).region;
+int regC88 = Th8(1.25, -0.35).region;
+
+fespace Ph8(Th8, P0);
+
+Ph8 k8 = (region == regS8) ? 1.0 : 10.0;
+Ph8 indicS8 = (region == regS8);
+
+Ph8 indicC18 = (region == regC18);
+Ph8 indicC28 = (region == regC28);
+Ph8 indicC38 = (region == regC38);
+Ph8 indicC48 = (region == regC48);
+Ph8 indicC58 = (region == regC58);
+Ph8 indicC68 = (region == regC68);
+Ph8 indicC78 = (region == regC78);
+Ph8 indicC88 = (region == regC88);
+
+Ph8[int] indicC(8);
+indicC[0] = indicC18;
+indicC[1] = indicC28;
+indicC[2] = indicC38;
+indicC[3] = indicC48;
+indicC[4] = indicC58;
+indicC[5] = indicC68;
+indicC[6] = indicC78;
+indicC[7] = indicC88;
+
+// Solve the optimal problem
+
+Vh8 T0, Ti;
+Vh8[int] T(8);
+
+solve PbT0(T0, vh8) =
+      int2d(Th8)(k8 * (dx(T0)*dx(vh8) + dy(T0)*dy(vh8)))
+    + int1d(Th8, 1)(k8 * hCoef * T0 * vh8)
+    - int1d(Th8, 1)(k8 * hCoef * Te * vh8)
+    + on(3, T0 = Tc);
+
+for (int i = 0; i < 8; i++) {
+    solve PbTi(Ti, vh8) =
+          int2d(Th8)(k8 * (dx(Ti)*dx(vh8) + dy(Ti)*dy(vh8)))
+        + int1d(Th8, 1)(k8 * hCoef * Ti * vh8)
+        - int2d(Th8)(indicC[i] * vh8)
+        + on(3, Ti = 0);
+    T[i] = Ti;
+}
+
+real[int, int] M(8, 8);
+real[int] b(8);
+
+for (int i = 0; i < 8; i++) {
+    b[i] = int2d(Th8)(indicS8 * (Ts - T0) * T[i]);
+    for (int j = 0; j < 8; j++) {
+        M(i, j) = int2d(Th8)(indicS8 * T[i] * T[j]);
+    }
+}
+
+matrix Msp = M;
+set(Msp, solver=UMFPACK);
+real[int] alphaStar = Msp^-1 * b;
+
+for (int i = 0; i < 8; i++) {
+    cout << "alpha_" << i+1 << " = " << alphaStar[i] << endl;
+}
+
+// Check the results !
+Ph8 fOpt = alphaStar[0]*indicC[0] + alphaStar[1]*indicC[1] + alphaStar[2]*indicC[2] + alphaStar[3]*indicC[3] + alphaStar[4]*indicC[4] + alphaStar[5]*indicC[5] + alphaStar[6]*indicC[6] + alphaStar[7]*indicC[7];
+
+Vh8 Topt;
+solve PbOpt(Topt, vh8) =
+      int2d(Th8)(k8 * (dx(Topt)*dx(vh8) + dy(Topt)*dy(vh8)))
+    + int1d(Th8, 1)(k8 * hCoef * Topt * vh8)
+    - int2d(Th8)(fOpt * vh8)
+    - int1d(Th8, 1)(k8 * hCoef * Te * vh8)
+    + on(3, Topt = Tc);
+
+real errorL2 = sqrt(int2d(Th8)(indicS8 * (Topt - Ts)^2));
+cout << "L2 error on S = " << errorL2 << endl;
+
+plot(Topt, fill=true, value=true, wait=true, ps="report/fig/improvedOven.eps", cmm="Temperature distribution with 8 rectangular resistors");

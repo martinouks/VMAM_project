@@ -1,0 +1,61 @@
+include "common/common.edp"
+
+Vh T0, Ti;
+Vh[int] T(6);
+Vh[int] indicC(6);
+indicC[0] = indicC1;
+indicC[1] = indicC2;
+indicC[2] = indicC3;
+indicC[3] = indicC4;
+indicC[4] = indicC5;
+indicC[5] = indicC6;
+
+solve PbT0(T0, vh) =
+      int2d(Th)(k * (dx(T0)*dx(vh) + dy(T0)*dy(vh)))
+    + int1d(Th, 1)(k * hCoef * T0 * vh)
+    - int1d(Th, 1)(k * hCoef * Te * vh)
+    + on(3, T0 = Tc);
+
+for (int i = 0; i < 6; i++) {
+    Vh funcF = indicC[i];
+    solve PbTi(Ti, vh) =
+          int2d(Th)(k * (dx(Ti)*dx(vh) + dy(Ti)*dy(vh)))
+        + int1d(Th, 1)(k * hCoef * Ti * vh)
+        - int2d(Th)(funcF * vh)
+        + on(3, Ti = 0);
+    T[i] = Ti;
+}
+
+real[int, int] M(6, 6);
+real[int] b(6);
+
+for (int i = 0; i < 6; i++) {
+    b[i] = int2d(Th)(indicS * (Ts - T0) * T[i]);
+    for (int j = 0; j < 6; j++) {
+        M(i, j) = int2d(Th)(indicS * T[i] * T[j]);
+    }
+}
+
+matrix Msp = M;
+set(Msp, solver=UMFPACK);
+real[int] alphaStar = Msp^-1 * b;
+
+for (int i = 0; i < 6; i++) {
+    cout << "alpha_" << i+1 << " = " << alphaStar[i] << endl;
+}
+
+// Check the results !
+Vh fOpt = alphaStar[0]*indicC1 + alphaStar[1]*indicC2 + alphaStar[2]*indicC3 + alphaStar[3]*indicC4 + alphaStar[4]*indicC5 + alphaStar[5]*indicC6;
+
+Vh Topt;
+solve PbOpt(Topt, vh) =
+      int2d(Th)(k * (dx(Topt)*dx(vh) + dy(Topt)*dy(vh)))
+    + int1d(Th, 1)(k * hCoef * Topt * vh)
+    - int2d(Th)(fOpt * vh)
+    - int1d(Th, 1)(k * hCoef * Te * vh)
+    + on(3, Topt = Tc);
+
+real errorL2 = sqrt(int2d(Th)(indicS * (Topt - Ts)^2));
+cout << "L2 error on S = " << errorL2 << endl;
+
+plot(Topt, fill=true, value=true, wait=true, ps="report/fig/optimalPb.eps", cmm="Temperature distribution on the oven with optimal resistors values");

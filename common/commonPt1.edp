@@ -1,0 +1,4 @@
+real al1 = 1e4, al2 = 1e4, al3 = 1e4, al4 = 1e4, al5 = 1e4, al6 = 1e4;
+
+Ph f;
+f = al1*indicC1 + al2*indicC2 + al3*indicC3 + al4*indicC4 + al5*indicC5 + al6*indicC6;

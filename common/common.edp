@@ -1,0 +1,70 @@
+verbosity = 0;
+
+real Tc  = 343.0;
+real Te  = 293.0;
+real hCoef  = 1.0;
+real r0  = 0.05;
+real Ts  = 400.0;
+
+// Centers of the 6 resistors: {-1, 0, 1} x {-0.75, 0.75}
+real cx1 = -1.0, cx2 = 0.0, cx3 = 1.0, cx4 = -1.0, cx5 = 0.0, cx6 = 1.0;
+real cy1 = -0.75, cy2 = -0.75, cy3 = -0.75, cy4 = 0.75, cy5 = 0.75, cy6 = 0.75;
+
+// Mesh construction
+int nO = 30, nC = 15, nS = 20;
+
+border bBottom(t=-1.5, 1.5) {x=t; y=-1; label=1;}
+border bRight(t=-1, 1) {x=1.5; y=t; label=2;}
+border bTop(t=1.5, -1.5) {x=t; y=1; label=3;}
+border bLeft(t=1, -1) {x=-1.5; y=t; label=4;}
+
+border sBottom(t=-0.75, 0.75) {x=t; y=-0.5; label=10;}
+border sRight(t=-0.5, 0.5) {x=0.75; y=t; label=10;}
+border sTop(t=0.75, -0.75) {x=t; y=0.5; label=10;}
+border sLeft(t=0.5, -0.5) {x=-0.75; y=t; label=10;}
+
+border Circ1(t=0, 2*pi) {x=cx1+r0*cos(t); y=cy1+r0*sin(t); label=21;}
+border Circ2(t=0, 2*pi) {x=cx2+r0*cos(t); y=cy2+r0*sin(t); label=22;}
+border Circ3(t=0, 2*pi) {x=cx3+r0*cos(t); y=cy3+r0*sin(t); label=23;}
+border Circ4(t=0, 2*pi) {x=cx4+r0*cos(t); y=cy4+r0*sin(t); label=24;}
+border Circ5(t=0, 2*pi) {x=cx5+r0*cos(t); y=cy5+r0*sin(t); label=25;}
+border Circ6(t=0, 2*pi) {x=cx6+r0*cos(t); y=cy6+r0*sin(t); label=26;}
+
+mesh Th = buildmesh(
+    bBottom(3*nO) + bRight(2*nO) + bTop(3*nO) + bLeft(2*nO)
+    + sBottom(nS) + sRight(nS) + sTop(nS) + sLeft(nS)
+    + Circ1(nC) + Circ2(nC) + Circ3(nC) + Circ4(nC) + Circ5(nC) + Circ6(nC)
+);
+
+// plot(Th, wait=true, cmm="Oven mesh");
+
+fespace Vh(Th, P1);
+Vh uh, vh;
+
+// Regions 
+int regS  = Th(0.0, 0.0).region;
+int regC1 = Th(cx1, cy1).region;
+int regC2 = Th(cx2, cy2).region;
+int regC3 = Th(cx3, cy3).region;
+int regC4 = Th(cx4, cy4).region;
+int regC5 = Th(cx5, cy5).region;
+int regC6 = Th(cx6, cy6).region;
+
+// We use P0 elements for k and the indicator functions since they are piecewise constant on each triangle
+fespace Ph(Th, P0);
+
+// Diffusion coefficient:
+Ph k;
+k = (region == regS) ? 1.0 : 10.0;
+
+// Indicator functions
+Ph indicS;
+indicS = (region == regS);
+
+Ph indicC1, indicC2, indicC3, indicC4, indicC5, indicC6;
+indicC1 = (region == regC1);
+indicC2 = (region == regC2);
+indicC3 = (region == regC3);
+indicC4 = (region == regC4);
+indicC5 = (region == regC5);
+indicC6 = (region == regC6);

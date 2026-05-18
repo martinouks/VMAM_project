@@ -1,0 +1,28 @@
+include "common/common.edp"
+include "common/commonPt1.edp"
+
+real dt = 0.001;
+real T = 0.5;
+
+int Nt = T / dt;
+
+Vh Told, Tnew;
+Told = Te;
+
+problem PbTransient(Tnew, vh) =
+    int2d(Th)(dt * k * (dx(Tnew)*dx(vh) + dy(Tnew)*dy(vh)))
+  + int1d(Th, 1)(dt * k * hCoef * Tnew * vh)
+  + int2d(Th)(Tnew * vh)
+  - int2d(Th)(Told * vh)
+  - int2d(Th)(dt * f * vh)
+  - int1d(Th, 1)(dt * k * hCoef * Te * vh)
+  + on(3, Tnew = Tc);
+
+for (int n = 0; n < Nt; n++) {
+    PbTransient;
+    Told = Tnew;
+
+    plot(Tnew, fill=true, value=true, wait=false, cmm="Warm up at t=" + (n+1)*dt);
+}
+
+plot(Tnew, fill=true, value=true, wait=true, ps="report/fig/transientPb.eps", cmm="Temperature distribution on the oven with fixed resistors at t=" + T);

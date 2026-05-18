@@ -1,0 +1,11 @@
+include "common/common.edp"
+include "common/commonPt1.edp"
+
+solve PbDirect(uh, vh) =
+    int2d(Th)(k * (dx(uh)*dx(vh) + dy(uh)*dy(vh)))
+  + int1d(Th, 1)(k * hCoef * uh * vh)
+  - int2d(Th)(f * vh)
+  - int1d(Th, 1)(k * hCoef * Te * vh)
+  + on(3, uh = Tc);
+
+plot(uh, fill=true, wait=true, value=true, cmm="Temperature distribution on the oven with fixed resistors", ps="report/fig/directPb.eps");
