@@ -73,7 +73,7 @@ which proves that $M$ is positive semi-definite. Assuming the localized thermal 
 
 \subsection{Optimal coefficients and comments}
 
-The resolution of the linear system~\cref{eq:syst_opt} with $T_s = 400\,\mathrm{K}$ yields the optimal control vector $\boldsymbol{\alpha}^*$, which dictates the power intensity of each individual resistor. The computed optimal values are:
+The resolution of the linear system~\cref{eq:syst_opt} with $T_s = 400\,\mathrm{K}$ yields the optimal control vector $\boldsymbol{\alpha}^*$, which dictates the power intensity of each individual resistor. The computed optimal values are (see \texttt{optimalPb.edp}):
 \begin{align*}
     \alpha_1^* &= 159\,601, & \alpha_2^* &= 168\,331, & \alpha_3^* &= 158\,176, \\
     \alpha_4^* &= 502\,764, & \alpha_5^* &= 412\,308, & \alpha_6^* &= 497\,148.
@@ -100,7 +100,7 @@ So, we chose to increase the number of resistors from 6 to 8. We distribute them
 
 Moreover, the circular point sources are replaced by rectangular resistors, in order to follow the shape of the cooking region.
 
-We implemented this new configuration in FreeFem++ and solved the optimization problem using the same approach as \cref{sec:linear_opti_system}.
+We implemented this new configuration in FreeFem++ (see \texttt{optimalPbBetterOven.edp}) and solved the optimization problem using the same approach as \cref{sec:linear_opti_system}.
 
 As shown in \cref{fig:improvedOven}, the new optimal temperature distribution is remarkably homogeneous. 
 \begin{figure}[H]

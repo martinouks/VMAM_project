@@ -117,7 +117,7 @@ T_h(\mathbf{x}) = \sum_{j=1}^N U_j\,\varphi_j(\mathbf{x}) + \tilde{T}_h(\mathbf{
 
 \subsection{FreeFem++ implementation and comments}
 
-The numerical simulation of the direct problem yields the temperature distribution inside the oven for a uniform set of source intensities ($\alpha_i = 10^4$), see \cref{fig:four_direct}.
+The numerical simulation (see \texttt{directPb.edp}) of the direct problem yields the temperature distribution inside the oven for a uniform set of source intensities ($\alpha_i = 10^4$), see \cref{fig:four_direct}.
 
 \begin{figure}[H]
     \centering
@@ -157,7 +157,7 @@ Following the stationary case procedure, we introduce the bilinear form $m(u,v) 
 \end{equation}
 where $a(\cdot, \cdot)$ and $l(\cdot)$ are the forms defined in \cref{eq:VF}. As $t \to +\infty$, this transient solution naturally converges toward the stationary solution.
 
-At the final time step (here $T = 0.5$), we obtain a temperature distribution that is close to the stationary solution, which validates the implementation of the transient scheme (see \cref{fig:transientPb}). 
+At the final time step (here $T = 0.5$), we obtain (see \texttt{transientPb.edp}) a temperature distribution that is close to the stationary solution, which validates the implementation of the transient scheme (see \cref{fig:transientPb}). 
 
 \begin{figure}[H]
     \centering
