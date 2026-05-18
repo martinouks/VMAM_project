@@ -44,14 +44,14 @@ where $T_0$ follows~\cref{eq:T0} and each $T_i$ follows~\cref{eq:Ti}.
 
 \subsection{Reduction to a linear system}\label{sec:linear_opti_system}
 
-We seek the optimal vector $\boldsymbol{\alpha}^* = (\alpha_1^*, \dots, \alpha_6^*)^T$ that minimizes the cost function:
+We seek the optimal vector $\boldsymbol{\alpha}^* = {(\alpha_1^*, \dots, \alpha_6^*)}^T$ that minimizes the cost function:
 \begin{equation}\label{eq:cost_func}
     J(\boldsymbol{\alpha}) = \frac{1}{2}\int_S |T(\boldsymbol{\alpha},\mathbf{x}) - T_s|^2 \dd \mathbf{x}.
 \end{equation}
 
 By substituting the linear decomposition from \cref{eq:decomp}, $J$ becomes a convex quadratic function of $\boldsymbol{\alpha}$:
 \begin{equation}
-    J(\boldsymbol{\alpha}) = \frac{1}{2}\int_S \left( T_0(\mathbf{x}) + \sum_{i=1}^6 \alpha_i T_i(\mathbf{x}) - T_s \right)^2 \dd \mathbf{x}.
+    J(\boldsymbol{\alpha}) = \frac{1}{2}\int_S {\left( T_0(\mathbf{x}) + \sum_{i=1}^6 \alpha_i T_i(\mathbf{x}) - T_s \right)}^2 \dd \mathbf{x}.
 \end{equation}
 
 The necessary and sufficient first-order optimality conditions for this unconstrained convex minimization problem are $\frac{\partial J}{\partial \alpha_j}(\boldsymbol{\alpha}^*) = 0$ for all $j \in \{1,\dots,6\}$. Differentiating $J$ gives:
@@ -65,15 +65,15 @@ By separating the terms that depend on $\boldsymbol{\alpha}^*$ from the known qu
 \end{equation}
 
 
-$M$ is symmetric by construction. Furthermore, for a vector $\mathbf{v} = (v_1, \dots, v_6)^T$, we have:
+$M$ is symmetric by construction. Furthermore, for a vector $\mathbf{v} = {(v_1, \dots, v_6)}^T$, we have:
 \begin{equation}
-    \mathbf{v}^T M \mathbf{v} = \sum_{i=1}^6 \sum_{j=1}^6 v_i \left( \int_S T_i(\mathbf{x}) T_j(\mathbf{x}) \dd \mathbf{x} \right) v_j = \int_S \left( \sum_{i=1}^6 v_i T_i(\mathbf{x}) \right)^2 \dd \mathbf{x} \ge 0,
+    \mathbf{v}^T M \mathbf{v} = \sum_{i=1}^6 \sum_{j=1}^6 v_i \left( \int_S T_i(\mathbf{x}) T_j(\mathbf{x}) \dd \mathbf{x} \right) v_j = \int_S {\left( \sum_{i=1}^6 v_i T_i(\mathbf{x}) \right)}^2 \dd \mathbf{x} \ge 0,
 \end{equation}
-which proves that $M$ is positive semi-definite. Assuming the localized thermal footprints $(T_i|_S)_{i=1}^6$ are linearly independent over $S$ (which is the case here), the integral vanishes if and only if $\mathbf{v} = 0$. Therefore, $M$ is positive definite, which guarantees the invertibility of the linear system~\cref{eq:syst_opt} and the uniqueness of the optimal control $\boldsymbol{\alpha}^*$.
+which proves that $M$ is positive semi-definite. Assuming the localized thermal footprints ${(T_i|_S)}_{i=1}^6$ are linearly independent over $S$ (which is the case here), the integral vanishes if and only if $\mathbf{v} = 0$. Therefore, $M$ is positive definite, which guarantees the invertibility of the linear system~\cref{eq:syst_opt} and the uniqueness of the optimal control $\boldsymbol{\alpha}^*$.
 
-\subsection{Optimal coefficients for $T_s = 400\,\mathrm{K}$ and comments}
+\subsection{Optimal coefficients and comments}
 
-The resolution of the linear system~\cref{eq:syst_opt} yields the optimal control vector $\boldsymbol{\alpha}^*$, which dictates the power intensity of each individual resistor. The computed optimal values are:
+The resolution of the linear system~\cref{eq:syst_opt} with $T_s = 400\,\mathrm{K}$ yields the optimal control vector $\boldsymbol{\alpha}^*$, which dictates the power intensity of each individual resistor. The computed optimal values are:
 \begin{align*}
     \alpha_1^* &= 159\,601, & \alpha_2^* &= 168\,331, & \alpha_3^* &= 158\,176, \\
     \alpha_4^* &= 502\,764, & \alpha_5^* &= 412\,308, & \alpha_6^* &= 497\,148.
