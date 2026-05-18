@@ -1,44 +1,112 @@
-\section{Optimization problem}
+\section{Optimization problem}\label{sec:opti_pb}
 
 \subsection{Linear decomposition of the solution}
 
-By linearity of equation~\eqref{eq:VF}, we decompose $f = \sum_{i=1}^6 \alpha_i \mathbf{1}_{C_i}$ and write:
-\begin{equation}
-T(\alpha, x) = T_0(x) + \sum_{i=1}^6 \alpha_i\,T_i(x),
-\end{equation}
-where $T_0$ is the solution of the problem \emph{without source} ($f=0$) with the same boundary conditions (Dirichlet and Robin), and for $i=1,\ldots,6$, $T_i$ is the solution of the homogeneous Dirichlet temperature problem ($T_i|_{\Gamma_{\text{top}}}=0$) with the right-hand side $f = \mathbf{1}_{C_i}$:
-\begin{equation}
--\mathrm{div}(k\nabla T_i) = \mathbf{1}_{C_i} \quad \text{in } \Omega, \quad
-T_i|_{\Gamma_{\text{top}}} = 0, \quad
-\partial_n T_i + h T_i = 0 \text{ on } \Gamma_{\text{bottom}}, \quad
-\partial_n T_i = 0 \text{ on } \Gamma_{\text{side}}.
-\end{equation}
-These 7 problems are independent of the coefficients $(\alpha_i)$ and only need to be solved once.
+Let $T(\boldsymbol{\alpha}, \mathbf{x})$ be the solution of the problem.
 
-\subsection{Reduction to a linear system}
+First, we define $T_0(\mathbf{x})$ as the solution to the physical problem without any internal heat sources ($f = 0$), but subjected to the exact same external boundary conditions as $T$:
+\begin{equation} \label{eq:T0}
+    \begin{cases}
+        -\mathrm{div}(k\nabla T_0) = 0 & \text{in } \Omega, \\
+        T_0 = T_c & \text{on } \Gamma_{\text{top}}, \\
+        \partial_n T_0 + h T_0 = h T_e & \text{on } \Gamma_{\text{bottom}}, \\
+        \partial_n T_0 = 0 & \text{on } \Gamma_{\text{side}}.
+    \end{cases}
+\end{equation}
 
-We seek $\alpha^* = (\alpha_i^*)_{i=1}^6$ minimizing the functional:
-\begin{equation}
-J(\alpha) = \frac{1}{2}\int_S |T(\alpha,x) - T_s|^2\dd x.
+Next, we introduce the residual temperature field $U(\boldsymbol{\alpha}, \mathbf{x}) = T(\boldsymbol{\alpha}, \mathbf{x}) - T_0(\mathbf{x})$. By subtracting the system of equations for $T_0$ from the system for $T$, and by linearity of the differential operators, $U$ satisfies:
+\begin{equation} \label{eq:global_U}
+    \begin{cases}
+        -\mathrm{div}(k\nabla U) = \sum_{i=1}^6 \alpha_i \mathbb{1}_{C_i} & \text{in } \Omega, \\
+        U = 0 & \text{on } \Gamma_{\text{top}}, \\
+        \partial_n U + h U = 0 & \text{on } \Gamma_{\text{bottom}}, \\
+        \partial_n U = 0 & \text{on } \Gamma_{\text{side}}.
+    \end{cases}
 \end{equation}
-By substituting the decomposition, $J$ becomes a convex quadratic function in $\alpha$:
-\begin{equation}
-J(\alpha) = \frac{1}{2}\int_S \left|T_0 + \sum_{i=1}^6 \alpha_i T_i - T_s\right|^2\dd x.
+
+Since the partial differential operator $-\mathrm{div}(k\nabla \cdot)$ along with these homogeneous boundary conditions forms a purely linear operator, the solution $U$ depends linearly on the source term $\sum_{i=1}^6 \alpha_i \mathbb{1}_{C_i}$.
+
+By the superposition principle, we can therefore define $T_i(\mathbf{x})$ for each $i \in \{1, \dots, 6\}$ as the elementary solution of~\cref{eq:global_U}:
+\begin{equation} \label{eq:Ti}
+    \begin{cases}
+        -\mathrm{div}(k\nabla T_i) = \mathbb{1}_{C_i} & \text{in } \Omega, \\
+        T_i = 0 & \text{on } \Gamma_{\text{top}}, \\
+        \partial_n T_i + h T_i = 0 & \text{on } \Gamma_{\text{bottom}}, \\
+        \partial_n T_i = 0 & \text{on } \Gamma_{\text{side}}.
+    \end{cases}
 \end{equation}
-The optimality conditions $\partial J/\partial \alpha_j = 0$ (for $j=1,\ldots,6$) give:
-\begin{equation}
-\int_S \left(T_0 + \sum_{i=1}^6 \alpha_i T_i - T_s\right)T_j\dd x = 0, \quad j = 1,\ldots,6,
+
+Due to linearity, it immediately follows that $U(\boldsymbol{\alpha}, \mathbf{x}) = \sum_{i=1}^6 \alpha_i T_i(\mathbf{x})$. Substituting this back into $T = T_0 + U$, we obtain the decomposition of the temperature field:
+\begin{equation} \label{eq:decomp}
+    T(\boldsymbol{\alpha}, \mathbf{x}) = T_0(\mathbf{x}) + \sum_{i=1}^6 \alpha_i \, T_i(\mathbf{x}).
 \end{equation}
-which yields the $6\times 6$ linear system:
+where $T_0$ follows~\cref{eq:T0} and each $T_i$ follows~\cref{eq:Ti}.
+
+\subsection{Reduction to a linear system}\label{sec:linear_opti_system}
+
+We seek the optimal vector $\boldsymbol{\alpha}^* = (\alpha_1^*, \dots, \alpha_6^*)^T$ that minimizes the cost function:
+\begin{equation}\label{eq:cost_func}
+    J(\boldsymbol{\alpha}) = \frac{1}{2}\int_S |T(\boldsymbol{\alpha},\mathbf{x}) - T_s|^2 \dd \mathbf{x}.
+\end{equation}
+
+By substituting the linear decomposition from \cref{eq:decomp}, $J$ becomes a convex quadratic function of $\boldsymbol{\alpha}$:
+\begin{equation}
+    J(\boldsymbol{\alpha}) = \frac{1}{2}\int_S \left( T_0(\mathbf{x}) + \sum_{i=1}^6 \alpha_i T_i(\mathbf{x}) - T_s \right)^2 \dd \mathbf{x}.
+\end{equation}
+
+The necessary and sufficient first-order optimality conditions for this unconstrained convex minimization problem are $\frac{\partial J}{\partial \alpha_j}(\boldsymbol{\alpha}^*) = 0$ for all $j \in \{1,\dots,6\}$. Differentiating $J$ gives:
+\begin{equation}
+    \int_S \left( T_0(\mathbf{x}) + \sum_{i=1}^6 \alpha_i^* T_i(\mathbf{x}) - T_s \right) T_j(\mathbf{x}) \dd \mathbf{x} = 0, \quad \forall j \in \{1,\dots,6\}.
+\end{equation}
+
+By separating the terms that depend on $\boldsymbol{\alpha}^*$ from the known quantities, we obtain the following $6 \times 6$ linear system:
 \begin{equation}\label{eq:syst_opt}
-\boxed{M\,\alpha^* = b, \qquad M_{ij} = \int_S T_i\,T_j\dd x, \qquad b_j = \int_S (T_s - T_0)\,T_j\dd x.}
+    \boxed{M\,\boldsymbol{\alpha}^* = \mathbf{b}, \qquad \text{with } M_{ij} = \int_S T_i\,T_j \dd \mathbf{x}, \quad \text{and } b_j = \int_S (T_s - T_0)\,T_j \dd \mathbf{x}.}
 \end{equation}
-The matrix $M$ is symmetric positive semi-definite. It is positive definite if the functions $(T_i|_S)_{i=1}^6$ are linearly independent, which is the generic case.
 
-\subsection{Optimal coefficients for $T_s = 400\,\mathrm{K}$}
 
-System~\eqref{eq:syst_opt} is solved by Gaussian elimination with partial pivoting (implemented manually in the FreeFem++ code). The solution $T^{\text{opt}} = T_0 + \sum_i \alpha_i^* T_i$ is then compared to a direct simulation using these coefficients, which validates the procedure. The quality is measured by the standard deviation $\sigma_S = \left(\frac{1}{|S|}\int_S (T^{\text{opt}} - T_s)^2\dd x\right)^{1/2}$ and by the value of $J(\alpha^*)$.
+$M$ is symmetric by construction. Furthermore, for a vector $\mathbf{v} = (v_1, \dots, v_6)^T$, we have:
+\begin{equation}
+    \mathbf{v}^T M \mathbf{v} = \sum_{i=1}^6 \sum_{j=1}^6 v_i \left( \int_S T_i(\mathbf{x}) T_j(\mathbf{x}) \dd \mathbf{x} \right) v_j = \int_S \left( \sum_{i=1}^6 v_i T_i(\mathbf{x}) \right)^2 \dd \mathbf{x} \ge 0,
+\end{equation}
+which proves that $M$ is positive semi-definite. Assuming the localized thermal footprints $(T_i|_S)_{i=1}^6$ are linearly independent over $S$ (which is the case here), the integral vanishes if and only if $\mathbf{v} = 0$. Therefore, $M$ is positive definite, which guarantees the invertibility of the linear system~\cref{eq:syst_opt} and the uniqueness of the optimal control $\boldsymbol{\alpha}^*$.
 
-\subsection{Improvement of the distribution by adding sources}
+\subsection{Optimal coefficients for $T_s = 400\,\mathrm{K}$ and comments}
 
-By increasing the number of resistors (going to 8 sources in the code, placed on a grid $\{-1, -1/3, 1/3, 1\} \times \{-0.75, 0.75\}$), the same linear formalism applies with an $8\times8$ system. By altering the layout and shape of the sources, we can significantly reduce the temperature standard deviation in $S$, at the cost of a slight increase in power requirements (higher intensities). Sources closer to the center of $S$ are more efficient, but since the resistors are placed outside of $S$, a geometric compromise is necessary.
+The resolution of the linear system~\cref{eq:syst_opt} yields the optimal control vector $\boldsymbol{\alpha}^*$, which dictates the power intensity of each individual resistor. The computed optimal values are:
+\begin{align*}
+    \alpha_1^* &= 159\,601, & \alpha_2^* &= 168\,331, & \alpha_3^* &= 158\,176, \\
+    \alpha_4^* &= 502\,764, & \alpha_5^* &= 412\,308, & \alpha_6^* &= 497\,148.
+\end{align*}
+The resulting optimized temperature distribution is displayed in \cref{fig:optimalPb}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fig/optimalPb.eps}
+    \caption{Temperature distribution inside the oven computed with the optimal heat sources $\boldsymbol{\alpha}^*$.}\label{fig:optimalPb}
+\end{figure}
+
+The objective of the optimization is successfully met, as the residual $L^2$-error over the cooking region $S$ drops to a low value of $3.06$. Visually, the temperature field within $S$ (the central rectangle) is almost uniform.
+
+We can also remark that the optimization algorithm naturally accounted for the asymmetric boundary conditions of the oven. The top resistors ($\alpha_4^*, \alpha_5^*, \alpha_6^*$) must operate at a significantly higher intensity ($\approx 5 \times 10^5$) compared to the bottom resistors ($\alpha_1^*, \alpha_2^*, \alpha_3^* \approx 1.6 \times 10^5$). This perfectly balances the distinct heat dissipation rates of the upper and lower walls (Dirichlet condition is more dissipative than Robin condition).
+
+Furthermore, the resistors located closer to the center of $S$ ($\alpha_2^*$ and $\alpha_5^*$) have different values than the ones located on the edges (one is lower and one is higher).
+
+\subsection{Design of an improved oven configuration}
+
+While the previous optimization yielded a satisfactory $L^2$-error, we can have better results. By modifying the location, shape, and number of the heat sources, we propose a new configuration aimed at achieving a more naturally uniform heat distribution.
+
+So, we chose to increase the number of resistors from 6 to 8. We distribute them symmetrically around the cooking zone: two on the top, two on the bottom, two on the left, and two on the right.
+
+Moreover, the circular point sources are replaced by rectangular resistors, in order to follow the shape of the cooking region.
+
+We implemented this new configuration in FreeFem++ and solved the optimization problem using the same approach as \cref{sec:linear_opti_system}.
+
+As shown in \cref{fig:improvedOven}, the new optimal temperature distribution is remarkably homogeneous. 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fig/improvedOven.eps}
+    \caption{Temperature distribution for the proposed 8-strip configuration.}\label{fig:improvedOven}
+\end{figure}
+
+The residual $L^2$-error drops significantly from $3.06$ to $2.167$. Furthermore, the optimal power coefficients $\boldsymbol{\alpha}^*$ require lower peak intensities, proving that this design is also far more energy-efficient and realistic for industrial manufacturing.
