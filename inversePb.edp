@@ -1,0 +1,92 @@
+include "common/common.edp"
+
+// mesh without the resistors
+mesh ThInv = buildmesh(
+    bBottom(4*nO) + bRight(3*nO) + bTop(4*nO) + bLeft(3*nO)
+    + sBottom(2*nS) + sRight(2*nS) + sTop(2*nS) + sLeft(2*nS)
+);
+
+fespace VhInv(ThInv, P1);
+fespace PhInv(ThInv, P0);
+
+VhInv T0, Ttilde, Ttrue, vhInv;
+
+int regSInv = ThInv(0.0, 0.0).region;
+PhInv kInv = (region == regSInv) ? 1.0 : 10.0;
+
+// The anomaly to detect !
+real xTrue = 0.9;
+real yTrue = -0.6;
+real alphaTrue = 500000.0;
+
+PhInv indicTrue = ((x - xTrue)^2 + (y - yTrue)^2 <= r0^2);
+
+solve PbTrue(Ttrue, vhInv) =
+      int2d(ThInv)(kInv * (dx(Ttrue)*dx(vhInv) + dy(Ttrue)*dy(vhInv)))
+    + int1d(ThInv, 1)(kInv * hCoef * Ttrue * vhInv)
+    - int2d(ThInv)(alphaTrue * indicTrue * vhInv)
+    - int1d(ThInv, 1)(kInv * hCoef * Te * vhInv)
+    + on(3, Ttrue = Tc);
+
+// Compute T0
+solve PbT0(T0, vhInv) =
+      int2d(ThInv)(kInv * (dx(T0)*dx(vhInv) + dy(T0)*dy(vhInv)))
+    + int1d(ThInv, 1)(kInv * hCoef * T0 * vhInv)
+    - int1d(ThInv, 1)(kInv * hCoef * Te * vhInv)
+    + on(3, T0 = Tc);
+
+
+// -- Grid serach --
+// params
+int nx = 30;
+int ny = 23;
+real xMin = -1.45, xMax = 1.45;
+real yMin = -0.95, yMax = 0.95;
+real deltaX = (xMax - xMin) / (nx - 1);
+real deltaY = (yMax - yMin) / (ny - 1);
+
+// initialisation
+real bestJ = 1e30;
+real bestX = 0, bestY = 0, bestAlpha = 0;
+
+// Loop over positions of the grid search
+for (int i = 0; i < nx; i++) {
+    real xc = xMin + i * deltaX;
+    
+    for (int j = 0; j < ny; j++) {
+        real yc = yMin + j * deltaY;
+
+        PhInv indicCand = ((x - xc)^2 + (y - yc)^2 <= r0^2);
+
+        // Compute Ttilde
+        solve PbTtilde(Ttilde, vhInv) =
+              int2d(ThInv)(kInv * (dx(Ttilde)*dx(vhInv) + dy(Ttilde)*dy(vhInv)))
+            + int1d(ThInv, 1)(kInv * hCoef * Ttilde * vhInv)
+            - int2d(ThInv)(indicCand * vhInv)
+            + on(3, Ttilde = 0);
+
+        // Compute the optimal alpha
+        real num = int1d(ThInv, 2, 4)((Ttrue - T0) * Ttilde);
+        real den = int1d(ThInv, 2, 4)(Ttilde * Ttilde);
+        real alphaOpt = num / den;
+
+        // Compute J
+        real J = 0.5 * int1d(ThInv, 2, 4)((T0 + alphaOpt * Ttilde - Ttrue)^2);
+
+        // Update
+        if (J < bestJ) {
+            bestJ = J;
+            bestX = xc;
+            bestY = yc;
+            bestAlpha = alphaOpt;
+        }
+    }
+}
+
+// Results
+cout << " TRUE ANOMALY:" << endl;
+cout << " x = " << xTrue << ", y = " << yTrue << ", alpha = " << alphaTrue << endl;
+cout << "----------------------------------------" << endl;
+cout << " DETECTED ANOMALY:" << endl;
+cout << " x = " << bestX << ", y = " << bestY << ", alpha = " << bestAlpha << endl;
+cout << " Minimum Cost J = " << bestJ << endl;

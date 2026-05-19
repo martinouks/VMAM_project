@@ -1,26 +1,36 @@
-\section{Inverse problem}
+\section{Inverse problem: Anomaly detection from boundary measurements}
 
 \subsection{Framework and numerical approach}
 
-We assume that a single source $f = \alpha_1 \mathbf{1}_{C_1}$ is unknown (unknown intensity $\alpha_1$ and localization $C_1$). We have measurements of $T$ on the lateral boundaries $\Gamma_{\text{side}}$ (or of $\partial_n T$ on $\Gamma_{\text{top}}$).
+In this section, we study an anomaly corresponding to a single unknown high-intensity heat source $f = \alpha \mathbf{1}_{C}$. Both its intensity $\alpha$ and its physical location $(x_c, y_c)$ (the center of the circular region $C$ of radius $r_0$) are unknown parameters that must be identified. 
 
-We model the source by a Gaussian with position $(x_c, y_c)$ and standard deviation $\sigma = r_0$ (to overcome the non-differentiability of $\mathbf{1}_{C_1}$):
-\begin{equation}
-f(x, y; x_c, y_c, \alpha) = \alpha\,\exp\!\left(-\frac{(x-x_c)^2+(y-y_c)^2}{2\sigma^2}\right).
-\end{equation}
+To perform this detection, we rely on temperature measurements $T^{\text{mes}}$ taken on the lateral boundaries of the oven $\Gamma_{\text{side}}$. 
 
-\paragraph{Least squares functional.}
-For a fixed candidate position $(x_c, y_c)$, we seek $\alpha$ minimizing the deviation from the measurements on $\Gamma_{\text{side}}$:
-\begin{equation}
+For a fixed position $(x_c, y_c)$, we seek the intensity $\alpha$ that minimizes the $L^2$-error between our model prediction and the measurements on $\Gamma_{\text{side}}$:
+\begin{equation} \label{eq:cost_inverse}
 \mathcal{J}(x_c, y_c, \alpha) = \frac{1}{2}\int_{\Gamma_{\text{side}}} \left|T(x_c,y_c,\alpha) - T^{\text{mes}}\right|^2\dd\sigma.
 \end{equation}
-By linearity, $T = T_0 + \alpha\,\tilde{T}$ where $\tilde{T}$ is the unitary solution ($\alpha=1$) associated with the Gaussian source. The optimal intensity for a given position is therefore:
+
+Minimizing this functional directly with respect to both the spatial coordinates and the intensity is a difficult problem. To overcome this difficulty, we apply the exact same strategy as in \cref{sec:opti_pb}. Using the linearity of the stationary heat equation, the temperature field can be decomposed using the superposition principle:
 \begin{equation}
+    T(x_c, y_c, \alpha) = T_0 + \alpha\,\tilde{T}(x_c, y_c),
+\end{equation}
+where $T_0$ is the solution to~\cref{eq:T0} (without any anomaly) and $\tilde{T}$ follows~\cref{eq:Ti} (with a unit source ($\alpha=1$) strictly located at $(x_c, y_c)$).
+
+The necessary optimality condition $\frac{\partial \mathcal{J}}{\partial \alpha} = 0$ provides an explicit analytical formula for the optimal intensity associated with any given position:
+\begin{equation} \label{eq:alpha_opt_inverse}
 \alpha^*(x_c,y_c) = \frac{\displaystyle\int_{\Gamma_{\text{side}}} (T^{\text{mes}}-T_0)\,\tilde{T}\dd\sigma}{\displaystyle\int_{\Gamma_{\text{side}}} \tilde{T}^2\dd\sigma}.
 \end{equation}
 
-\paragraph{Grid search.}
-Since the position $(x_c, y_c)$ is the non-linear parameter, we proceed by a grid search over a $15\times12$ grid covering $[-1.3, 1.3]\times[-0.8, 0.8]$. For each grid point, we solve the direct problem ($\tilde{T}$), compute $\alpha^*$ using the formula above, and then evaluate $\mathcal{J}$. The selected position is the one that minimizes $\mathcal{J}$.
+By injecting $\alpha^*(x_c,y_c)$ back into \cref{eq:cost_inverse}, the cost functional depends solely on the spatial coordinates.
 
-\paragraph{Result.}
-The recovered position and intensity are close to the true values (position error in the order of the grid step, intensity error of a few percent), which validates the approach. Measurements on both lateral boundaries (labels 2 and 4 in FreeFem++) ensure better observability than a single boundary.
+We proceed with a grid search over a $30\times23$ spatial grid covering the inner viable domain $[-1.45, 1.45]\times[-0.95, 0.95]$. For each grid point $(x_k, y_k)$:
+\begin{enumerate}
+    \item We solve the direct problem to obtain $\tilde{T}(x_k, y_k)$ using~\cref{eq:Ti}.
+    \item We compute the optimal intensity $\alpha^*(x_k, y_k)$ using \cref{eq:alpha_opt_inverse}.
+    \item We evaluate the reduced cost functional $\mathcal{J}(x_k, y_k, \alpha^*)$.
+\end{enumerate}
+The grid point that minimizes $\mathcal{J}$ is identified as the anomaly's location, and its associated $\alpha^*$ is the detected intensity.
+
+We implemented this approach in \texttt{inversePb.edp}.
+For different values of the true anomaly parameters $(x_c, y_c, \alpha)$, we successfully detected the anomaly with good accuracy. A slight discrepancy remains, which is inherently tied to the spatial discretization limit of the grid. While a nested two-pass strategy (performing a localized second grid search around the initially detected position) could further reduce this error, the single-pass high-resolution grid already yields highly satisfactory accuracy while maintaining a reasonable computational time.
