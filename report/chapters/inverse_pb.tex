@@ -1,6 +1,4 @@
-\section{Inverse problem: Anomaly detection from boundary measurements}
-
-\subsection{Framework and numerical approach}
+\section{Inverse problem}
 
 In this section, we study an anomaly corresponding to a single unknown high-intensity heat source $f = \alpha \mathbf{1}_{C}$. Both its intensity $\alpha$ and its physical location $(x_c, y_c)$ (the center of the circular region $C$ of radius $r_0$) are unknown parameters that must be identified. 
 
@@ -24,7 +22,7 @@ The necessary optimality condition $\frac{\partial \mathcal{J}}{\partial \alpha}
 
 By injecting $\alpha^*(x_c,y_c)$ back into \cref{eq:cost_inverse}, the cost functional depends solely on the spatial coordinates.
 
-We proceed with a grid search over a $30\times23$ spatial grid covering the inner viable domain $[-1.45, 1.45]\times[-0.95, 0.95]$. For each grid point $(x_k, y_k)$:
+We proceed with a grid search over a $30\times23$ spatial grid covering the domain $[-1.45, 1.45]\times[-0.95, 0.95]$. For each grid point $(x_k, y_k)$:
 \begin{enumerate}
     \item We solve the direct problem to obtain $\tilde{T}(x_k, y_k)$ using~\cref{eq:Ti}.
     \item We compute the optimal intensity $\alpha^*(x_k, y_k)$ using \cref{eq:alpha_opt_inverse}.
